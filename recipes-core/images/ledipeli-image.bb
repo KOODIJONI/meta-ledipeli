@@ -9,5 +9,9 @@ IMAGE_INSTALL += " \
     dropbear \
 "
 
+INIT_MANAGER = "systemd"
+
+IMAGE_INSTALL:append = " nginx"
+
 # Set a reasonable rootfs size (in KB)
 IMAGE_ROOTFS_SIZE ?= "819200"
