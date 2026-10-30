@@ -31,7 +31,13 @@ sudo apt install gawk wget git diffstat unzip texinfo gcc build-essential \
    git clone -b scarthgap https://github.com/agherzan/meta-raspberrypi.git
    ```
 
-3. **Clone or place your `meta-ledipeli` layer** into the root of the `poky` directory:
+3. **Clone the OpenEmbedded  layer (`scarthgap` branch):**
+
+   ```bash
+   git clone -b scarthgap https://github.com/openembedded/meta-openembedded.git
+   ```
+
+4. **Clone or place your `meta-ledipeli` layer** into the root of the `poky` directory:
 
    ```bash
    git clone https://github.com/KOODIJONI/meta-ledipeli.git
