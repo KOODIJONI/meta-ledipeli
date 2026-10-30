@@ -3,15 +3,22 @@ LICENSE = "MIT"
 
 inherit core-image
 
-# Include basic boot packages and Dropbear SSH for headless access
-IMAGE_INSTALL += " \
-    packagegroup-core-boot \
-    dropbear \
-"
-
 INIT_MANAGER = "systemd"
 
-IMAGE_INSTALL:append = " nginx"
+
+IMAGE_INSTALL:append = " \
+    packagegroup-core-boot \
+    dropbear \
+    nginx \
+    python3 \
+    python3-pip \
+    python3-core \
+    python3-modules \
+    opencv \
+    python3-opencv \
+    libv4l \
+    v4l-utils \
+"
 
 # Set a reasonable rootfs size (in KB)
 IMAGE_ROOTFS_SIZE ?= "819200"
