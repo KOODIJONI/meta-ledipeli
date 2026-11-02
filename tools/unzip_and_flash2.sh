@@ -36,6 +36,8 @@ echo "=== Available Disks ==="
 lsblk -d -o NAME,SIZE,RM,MODEL | grep -E "NAME|disk"
 echo "======================="
 
+sudo lsblk -o NAME,FSTYPE,SIZE,MOUNTPOINT,LABEL
+
 read -p "[?] Enter the target SD card drive name (e.g., sdb): " TARGET_DISK
 
 # Basic safety validation

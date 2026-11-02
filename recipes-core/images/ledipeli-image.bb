@@ -17,6 +17,6 @@ IMAGE_INSTALL:append = " \
     v4l-utils \
     hand-tracker \
     systemd-conf \
-    dhcpcd \
 "
+SYSTEMD_AUTO_ENABLE:dropbear = "enable"
 IMAGE_ROOTFS_SIZE ?= "819200"
