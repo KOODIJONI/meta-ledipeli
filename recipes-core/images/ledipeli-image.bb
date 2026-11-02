@@ -3,9 +3,6 @@ LICENSE = "MIT"
 
 inherit core-image
 
-INIT_MANAGER = "systemd"
-
-
 IMAGE_INSTALL:append = " \
     packagegroup-core-boot \
     dropbear \
@@ -18,7 +15,8 @@ IMAGE_INSTALL:append = " \
     python3-opencv \
     libv4l \
     v4l-utils \
+    hand-tracker \
+    systemd-conf \
+    dhcpcd \
 "
-
-# Set a reasonable rootfs size (in KB)
 IMAGE_ROOTFS_SIZE ?= "819200"
