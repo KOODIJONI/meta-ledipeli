@@ -36,8 +36,13 @@ sudo apt install gawk wget git diffstat unzip texinfo gcc build-essential \
    ```bash
    git clone -b scarthgap https://github.com/openembedded/meta-openembedded.git
    ```
+4. **Clone the tensorflow-lite  layer (`scarthgap` branch):**
 
-4. **Clone or place your `meta-ledipeli` layer** into the root of the `poky` directory:
+   ```bash
+   git clone -b scarthgap https://github.com/NobuoTsukamoto/meta-tensorflow-lite.git
+   ```
+
+5. **Clone or place your `meta-ledipeli` layer** into the root of the `poky` directory:
 
    ```bash
    git clone https://github.com/KOODIJONI/meta-ledipeli.git
