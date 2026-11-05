@@ -9,13 +9,9 @@
 using Clock = std::chrono::steady_clock;
 
 int main(int argc, char* argv[]) {
-
     bool simulate = (argc > 1 && std::string(argv[1]) == "--simulate");
-    bool debug = (argc > 1 && std::string(argv[1]) == "--debug");
-
     Camera camera(0, simulate);
     if (simulate) std::cout << "Warning: simulation mode, feeding random noise." << std::endl;
-    if (debug) std::cout << "Debug mode enabled." << std::endl;
 
     if (!camera.isOpened()) {
         std::cerr << "Error: Could not open the webcam." << std::endl;
@@ -24,7 +20,6 @@ int main(int argc, char* argv[]) {
 
     std::string model_path = "/usr/share/hand-tracker/hand_landmark_lite.tflite";
     HandInference inference(model_path);
-
     if (!inference.initialize()) {
         std::cerr << "Error: Failed to initialize inference engine." << std::endl;
         return -1;
@@ -59,17 +54,11 @@ int main(int argc, char* argv[]) {
 
         if (ok && !landmarks.empty()) {
             ipcClient.sendData(landmarks);
-            if (debug) {
-                std::cout << "Landmarks: ";
-                for (const auto& val : landmarks) {
-                    std::cout << val << " ";
-                }
-                std::cout << std::endl;
-            }
         } else if (!ok) {
             std::cerr << "Inference failed!" << std::endl;
         }
 
+        // Report once per second
         std::chrono::duration<double> elapsed = Clock::now() - window_start;
         if (elapsed.count() >= 1.0) {
             double loop_fps = frames_in_window / elapsed.count();
