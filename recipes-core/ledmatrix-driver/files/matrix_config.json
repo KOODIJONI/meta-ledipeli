@@ -1,0 +1,9 @@
+{
+    "rows": 3,
+    "cols": 3,
+    "brightness": 255,
+    "serpentine": true,
+    "corner": 2,
+    "direction": "cw",
+    "rotation": 0
+}
