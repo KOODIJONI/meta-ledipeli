@@ -2,9 +2,10 @@ CC = gcc
 CFLAGS = -Wall -Wextra -std=c99 -DDEBUG_MATRIX
 
 TARGET = matrix_test
-SRCS = main.c matrix.c args.c
+CFLAGS += -I./lib/cJSON
+SRCS = main.c matrix.c args.c config.c buffer.c lib/cJSON/cJSON.c 
 OBJS = $(SRCS:.c=.o)
-HEADERS = matrix.h color.h args.h
+HEADERS = matrix.h color.h args.h buffer.h
 
 all: $(TARGET)
 
