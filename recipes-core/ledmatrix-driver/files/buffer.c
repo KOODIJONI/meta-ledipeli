@@ -18,11 +18,9 @@
 
 int BufferInit(Buffer *buffer, size_t capacity)
 {
-    if (buffer == NULL || capacity == 0)
-        return -1;
+    if (buffer == NULL || capacity == 0) return -1;
 
-    if (capacity > SIZE_MAX / sizeof(uint32_t))
-        return -1;
+    if (capacity > SIZE_MAX / sizeof(uint32_t)) return -1;
 
     buffer->data = malloc(capacity * sizeof(uint32_t));
 
@@ -43,8 +41,7 @@ int BufferValidate(const Buffer *buffer)
     if (buffer == NULL || buffer->data == NULL)
         return -1;
 
-    if (buffer->size == 0)
-        return -1;
+    if (buffer->size == 0) return -1;
 
     for (size_t i = 0; i < buffer->size; i++) {
         uint32_t value = buffer->data[i];
@@ -60,30 +57,23 @@ int BufferValidate(const Buffer *buffer)
 
 size_t BufferRequiredSamples(const Matrix *m)
 {
-    if (m == NULL)
-        return 0;
+    if (m == NULL) return 0;
 
-    if (MatrixValidate(m) != OK)
-        return 0;
+    if (MatrixValidate(m) != OK) return 0;
 
     size_t pixel_count = (size_t)m->rows * m->cols;
 
-    if (pixel_count >
-        (SIZE_MAX - RESET_PWM_PERIODS) / PWM_VALUES_PER_PIXEL)
-        return 0;
+    if (pixel_count > (SIZE_MAX - RESET_PWM_PERIODS) / PWM_VALUES_PER_PIXEL) return 0;
 
-    return (pixel_count * PWM_VALUES_PER_PIXEL)
-           + RESET_PWM_PERIODS;
+    return (pixel_count * PWM_VALUES_PER_PIXEL) + RESET_PWM_PERIODS;
 }
 
 
 int BufferWrite(Buffer *buffer, uint32_t sample)
 {
-    if (buffer == NULL || buffer->data == NULL)
-        return -1;
+    if (buffer == NULL || buffer->data == NULL) return -1;
 
-    if (buffer->size >= buffer->capacity)
-        return -1;
+    if (buffer->size >= buffer->capacity) return -1;
 
     buffer->data[buffer->size++] = sample;
 
@@ -96,17 +86,13 @@ int BufferWriteMany(
     const uint32_t *samples,
     size_t count)
 {
-    if (buffer == NULL || buffer->data == NULL)
-        return -1;
+    if (buffer == NULL || buffer->data == NULL) return -1;
 
-    if (samples == NULL && count > 0)
-        return -1;
+    if (samples == NULL && count > 0) return -1;
 
-    if (buffer->size > buffer->capacity)
-        return -1;
+    if (buffer->size > buffer->capacity) return -1;
 
-    if (count > buffer->capacity - buffer->size)
-        return -1;
+    if (count > buffer->capacity - buffer->size) return -1;
 
     if (count > 0) {
         memcpy(
@@ -141,16 +127,13 @@ static int BufferEncodeByte(
 
 int MatrixToBuffer(const Matrix *m, Buffer *buffer)
 {
-    if (m == NULL || buffer == NULL || buffer->data == NULL)
-        return -1;
+    if (m == NULL || buffer == NULL || buffer->data == NULL) return -1;
 
-    if (MatrixValidate(m) != OK)
-        return -1;
+    if (MatrixValidate(m) != OK) return -1;
 
     size_t required = BufferRequiredSamples(m);
 
-    if (required == 0 || buffer->capacity < required)
-        return -1;
+    if (required == 0 || buffer->capacity < required) return -1;
 
     BufferClear(buffer);
 
@@ -161,20 +144,16 @@ int MatrixToBuffer(const Matrix *m, Buffer *buffer)
         const RgbColor *color = &m->colors[i];
 
 
-        if (BufferEncodeByte(buffer, color->g) != 0)
-            goto error;
+        if (BufferEncodeByte(buffer, color->g) != 0) goto error;
 
-        if (BufferEncodeByte(buffer, color->r) != 0)
-            goto error;
+        if (BufferEncodeByte(buffer, color->r) != 0) goto error;
 
-        if (BufferEncodeByte(buffer, color->b) != 0)
-            goto error;
+        if (BufferEncodeByte(buffer, color->b) != 0) goto error;
     }
 
     for (size_t i = 0; i < RESET_PWM_PERIODS; i++) {
 
-        if (BufferWrite(buffer, 0) != 0)
-            goto error;
+        if (BufferWrite(buffer, 0) != 0) goto error;
     }
 
     return 0;
@@ -186,16 +165,14 @@ error:
 
 void BufferClear(Buffer *buffer)
 {
-    if (buffer == NULL)
-        return;
+    if (buffer == NULL) return;
 
     buffer->size = 0;
 }
 
 void BufferFree(Buffer *buffer)
 {
-    if (buffer == NULL)
-        return;
+    if (buffer == NULL) return;
 
     free(buffer->data);
 
@@ -206,8 +183,7 @@ void BufferFree(Buffer *buffer)
 
 void BufferPrintRaw(const Buffer *buffer)
 {
-    if (buffer == NULL || buffer->data == NULL)
-        return;
+    if (buffer == NULL || buffer->data == NULL) return;
 
     printf("--- Raw Buffer Data ---\n");
     for (size_t i = 0; i < buffer->size; i++) {

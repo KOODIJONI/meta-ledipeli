@@ -14,10 +14,8 @@ int parse_args(int argc, char *argv[], MatrixConfig *config)
         return -4;
     }
 
-    if (argc != 2)
-        return ERROR_INVALID_COORDINATES;
+    if (argc != 2) return ERROR_INVALID_COORDINATES;
 
-    // Defaults
     *config = (MatrixConfig) {
         .rows = ROWS,
         .cols = COLS,
