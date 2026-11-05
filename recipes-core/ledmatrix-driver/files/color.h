@@ -4,9 +4,9 @@
 #include <stdint.h>
 
 typedef struct __attribute__((packed)) {
-    uint8_t r, g, b;
+    uint8_t g, r, b;
 } RgbColor;
 
 void color_set(RgbColor *self, uint8_t r, uint8_t g, uint8_t b);
 
-#endif
+#endif // COLOR_H
