@@ -1,64 +1,64 @@
-
-SUMMARY = "LED Matrix driver library"
-DESCRIPTION = "C library for controlling an LED matrix"
+SUMMARY = "LED Matrix driver library and test utility"
+DESCRIPTION = "C library for controlling an LED matrix and accompanying executable."
 LICENSE = "CLOSED"
 
 SRC_URI = " \
-    file://args.c \
-    file://args.h \
-    file://color.c \
-    file://color.h \
-    file://config.c \
-    file://config.h \
-    file://matrix.c \
-    file://matrix.h \
-    file://matrix_config.json \
-    file://lib/cJSON/cJSON.c \
-    file://lib/cJSON/cJSON.h \
+    file://src \
+    file://include \
+    file://internal \
+    file://lib \
+    file://config \
+    file://tests \
 "
 
 S = "${WORKDIR}"
 
 do_compile() {
-    ${CC} ${CPPFLAGS} ${CFLAGS} -std=c99 -fPIC \
+    # 1. Compile all library sources into the shared library
+    LIB_SRCS=$(ls ${S}/src/*.c)
+
+    ${CC} ${CPPFLAGS} ${CFLAGS} -std=c99 -D_POSIX_C_SOURCE=200809L -fPIC \
+        -I${S}/include \
+        -I${S}/internal \
         -I${S}/lib/cJSON \
         -shared \
         -Wl,-soname,libledmatrix.so.1 \
-        -o libledmatrix.so.1 \
-        ${S}/args.c \
-        ${S}/color.c \
-        ${S}/config.c \
-        ${S}/matrix.c \
-        ${S}/lib/cJSON/cJSON.c \
-        ${LDFLAGS}
+        ${LDFLAGS} \
+        -o ${WORKDIR}/libledmatrix.so.1 \
+        ${LIB_SRCS} \
+        ${S}/lib/cJSON/cJSON.c
+
+    # 2. Compile the standalone test executable by linking the shared library directly by path
+    ${CC} ${CPPFLAGS} ${CFLAGS} -std=c99 -D_POSIX_C_SOURCE=200809L \
+        -I${S}/include \
+        -I${S}/internal \
+        -I${S}/lib/cJSON \
+        ${S}/tests/main.c \
+        ${WORKDIR}/libledmatrix.so.1 \
+        ${LDFLAGS} \
+        -Wl,-rpath,/usr/lib \
+        -o ${WORKDIR}/matrix_test
 }
 
 do_install() {
     install -d ${D}${libdir}
+    install -d ${D}${bindir}
     install -d ${D}${includedir}/ledmatrix-driver
     install -d ${D}${sysconfdir}/ledmatrix-driver
 
-    install -m 0755 ${S}/libledmatrix.so.1 \
-        ${D}${libdir}/libledmatrix.so.1
+    install -m 0755 ${WORKDIR}/libledmatrix.so.1 ${D}${libdir}/libledmatrix.so.1
+    ln -sf libledmatrix.so.1 ${D}${libdir}/libledmatrix.so
 
-    ln -s libledmatrix.so.1 \
-        ${D}${libdir}/libledmatrix.so
+    install -m 0755 ${WORKDIR}/matrix_test ${D}${bindir}/matrix_test
 
-    install -m 0644 ${S}/args.h \
-        ${D}${includedir}/ledmatrix-driver/
-    install -m 0644 ${S}/color.h \
-        ${D}${includedir}/ledmatrix-driver/
-    install -m 0644 ${S}/config.h \
-        ${D}${includedir}/ledmatrix-driver/
-    install -m 0644 ${S}/matrix.h \
-        ${D}${includedir}/ledmatrix-driver/
-
-    install -m 0644 ${S}/matrix_config.json \
+    install -m 0644 ${S}/include/*.h ${D}${includedir}/ledmatrix-driver/
+    install -m 0644 ${S}/config/matrix_config.json \
         ${D}${sysconfdir}/ledmatrix-driver/
 }
 
 FILES:${PN} += " \
     ${libdir}/libledmatrix.so.* \
+    ${bindir}/matrix_test \
     ${sysconfdir}/ledmatrix-driver/matrix_config.json \
 "
 
@@ -66,4 +66,3 @@ FILES:${PN}-dev += " \
     ${includedir}/ledmatrix-driver \
     ${libdir}/libledmatrix.so \
 "
-
