@@ -6,6 +6,8 @@
 #include <stdint.h>
 #include <limits.h>
 #include <fcntl.h>
+#include <unistd.h>
+#include <fcntl.h>
 
 #define PWM_DUTY_ZERO       14U
 #define PWM_DUTY_ONE        28U

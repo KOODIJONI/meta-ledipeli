@@ -88,6 +88,8 @@ int main(int argc, char *argv[])
     
     BufferPrintRaw(&buffer);
 
+    BufferSendToKernel(&buffer, "/dev/ledmatrix");
+
     // Release resources
     BufferFree(&buffer);
     
