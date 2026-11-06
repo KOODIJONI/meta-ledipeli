@@ -96,6 +96,7 @@ typedef struct {
 
 //init functions
 int MatrixInit(Matrix *m, const MatrixConfig *config);
+int MatrixInitWithJson(Matrix *m, const char *json_path);
 int MatrixValidate(const Matrix *m);
 
 //debug functions

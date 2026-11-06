@@ -1,43 +1,77 @@
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
 #include "matrix.h"
-
+#include "config.h"
 
 int MatrixInit(Matrix *m, const MatrixConfig *config)
 {
-    if (config == NULL) {
-        MatrixConfig default_config = {
-            .rows = ROWS,
-            .cols = COLS,
-            .brightness = 255,
-            .serpentine = false,
-            .rotation = ROTATION_0,
-            .serpentine_dir = CLOCKWISE,
-            .start_corner = FIRST_CORNER
-        };
-        config = &default_config;
-    }
+    if (m == NULL)
+        return ERROR_NULL_POINTER;
 
+    MatrixConfig default_config = {
+        .rows = ROWS,
+        .cols = COLS,
+        .brightness = 255,
+        .serpentine = false,
+        .rotation = ROTATION_0,
+        .serpentine_dir = CLOCKWISE,
+        .start_corner = FIRST_CORNER
+    };
+
+    if (config == NULL)
+        config = &default_config;
+
+    if (config->rows == 0 || config->cols == 0)
+        return ERROR_INVALID_COORDINATES;
+
+    size_t count = (size_t)config->rows * config->cols;
+
+    if (count > SIZE_MAX / sizeof(RgbColor))
+        return ERROR_INVALID_COORDINATES;
+
+    RgbColor *colors = calloc(count, sizeof(RgbColor));
+
+    if (colors == NULL) return ERROR_OUT_OF_MEMORY;
+
+    m->colors = colors;
     m->rows = config->rows;
     m->cols = config->cols;
     m->brightness = config->brightness;
     m->serpentine = config->serpentine;
+    m->rotation = config->rotation;
     m->serpentine_dir = config->serpentine_dir;
     m->start_corner = config->start_corner;
-    m->rotation = config->rotation;
 
-    if (MatrixValidate(m) != OK) {
-            return ERROR_NULL_POINTER;
+    int result = MatrixValidate(m);
+
+    if (result != OK) {
+        free(m->colors);
+        m->colors = NULL;
+        return result;
     }
 
-    RgbColor black = {0, 0, 0};
-    
-    MatrixWriteAll(m, black);
-    
     printf("Matrix initialized\n");
 
     return OK;
 }
+int MatrixInitWithJson(Matrix *m, const char *json_path)
+{
+    if (m == NULL || json_path == NULL) {
+        return ERROR_NULL_POINTER;
+    }
+
+    MatrixConfig config = {0};
+
+    int result = ConfigLoad(&config, json_path);
+    if (result != OK) {
+        return result;
+    }
+
+    return MatrixInit(m, &config);
+}
+
 int MatrixValidate(const Matrix *m)
 {
     if (m == NULL) {
