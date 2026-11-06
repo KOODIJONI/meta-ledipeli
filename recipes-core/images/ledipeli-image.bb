@@ -19,6 +19,9 @@ IMAGE_INSTALL:append = " \
     systemd-conf \
     libtensorflow-lite \
     python3-tensorflow-lite \
-"
+    ledmatrix-kernel \
+    ledmatrix-driver"
+
+KERNEL_MODULE_AUTOLOAD += "ledmatrix"
 SYSTEMD_AUTO_ENABLE:dropbear = "enable"
 IMAGE_ROOTFS_SIZE ?= "819200"
