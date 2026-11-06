@@ -308,13 +308,40 @@ bool MatrixGetSerpentine(Matrix *m) {
     return m->serpentine;
 }
 
-int MatrixSetSize(Matrix *m, int rows, int cols) {
-    if (MatrixValidate(m) != OK) return ERROR_NULL_POINTER;
-    
-    if (rows <= 0 || cols <= 0 || rows > 255 || cols > 255) return ERROR_INVALID_COORDINATES;
+int MatrixSetSize(Matrix *m, int rows, int cols)
+{
+    if (m == NULL)
+        return ERROR_NULL_POINTER;
 
-    m->rows = rows;
-    m->cols = cols;
+    if (rows <= 0 || cols <= 0 || rows > 255 || cols > 255)
+        return ERROR_INVALID_COORDINATES;
+
+    size_t new_count = (size_t)rows * (size_t)cols;
+
+    if (new_count > SIZE_MAX / sizeof(RgbColor))
+        return ERROR_INVALID_COORDINATES;
+
+    RgbColor *new_colors = realloc(
+        m->colors,
+        new_count * sizeof(RgbColor)
+    );
+
+    if (new_colors == NULL)
+        return ERROR_NULL_POINTER;
+
+    size_t old_count = (size_t)m->rows * m->cols;
+
+    if (new_count > old_count) {
+        memset(
+            new_colors + old_count,
+            0,
+            (new_count - old_count) * sizeof(RgbColor)
+        );
+    }
+
+    m->colors = new_colors;
+    m->rows = (uint8_t)rows;
+    m->cols = (uint8_t)cols;
 
     return OK;
 }
@@ -338,4 +365,13 @@ int MatrixSetBrightness(Matrix *m, float brightness) {
 float MatrixGetBrightness(Matrix *m) {
     if (MatrixValidate(m) != OK) return -1.0f;
     return (float)m->brightness / 255.0f;
+}
+
+void MatrixDestroy(Matrix *m)
+{
+    if (m == NULL)
+        return;
+
+    free(m->colors);
+    m->colors = NULL;
 }

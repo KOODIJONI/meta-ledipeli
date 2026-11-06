@@ -63,12 +63,13 @@ enum ERROR_CODES {
     OK = 0,
     ERROR_NULL_POINTER = -1,
     ERROR_OUT_OF_BOUNDS = -2,
-    ERROR_INVALID_COORDINATES = -3
+    ERROR_INVALID_COORDINATES = -3,
+    ERROR_OUT_OF_MEMORY = -4
 };
 
 typedef struct 
 {
-    RgbColor colors[OUTPUT_BUFFER_SIZE];
+    RgbColor *colors;
 
     uint8_t rows;
     uint8_t cols;
