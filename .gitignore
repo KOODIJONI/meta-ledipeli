@@ -5,7 +5,7 @@
 .DS_Store
 .vscode/
 .idea/
-
+build/
 # Python compiled bytecode
 __pycache__/
 *.py[cod]
