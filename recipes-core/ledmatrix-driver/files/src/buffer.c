@@ -5,6 +5,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <limits.h>
+#include <fcntl.h>
 
 #define PWM_DUTY_ZERO       14U
 #define PWM_DUTY_ONE        28U
@@ -195,4 +196,27 @@ void BufferPrintRaw(const Buffer *buffer)
     if (buffer->size % 16 != 0) {
         printf("\n");
     }
+}
+
+int BufferSendToKernel(const Buffer *buffer, const char *interface){
+
+    int fd = open(interface, O_RDWR);
+
+    if (fd < 0) {
+        perror("Failed to open device");
+        return -1;
+    }
+
+    size_t total_bytes = buffer->size * sizeof(uint32_t);
+    ssize_t written = write(fd, buffer->data, total_bytes);
+
+    close(fd);
+
+    if (written < 0 || (size_t)written != total_bytes) {
+        perror("Failed to write full buffer to kernel driver");
+        return -1;
+    }
+    
+    return 0;
+    
 }

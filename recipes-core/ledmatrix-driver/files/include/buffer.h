@@ -32,4 +32,6 @@ void BufferPrintRaw(const Buffer *buffer);
 
 int BufferValidate(const Buffer *buffer);
 
+int BufferSendToKernel(const Buffer *buffer);
+
 #endif // BUFFER_H
