@@ -1,24 +1,35 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -std=c99 -DDEBUG_MATRIX
 
-TARGET = matrix_test
-CFLAGS += -I./lib/cJSON
-SRCS = main.c matrix.c args.c config.c buffer.c lib/cJSON/cJSON.c 
-OBJS = $(SRCS:.c=.o)
-HEADERS = matrix.h color.h args.h buffer.h
+CFLAGS = -Wall -Wextra -std=c99 -DDEBUG_MATRIX
+CFLAGS += -I./include -I./lib/cJSON
+
+TARGET = build/matrix_test
+
+SRCS = tests/main.c \
+       src/matrix.c \
+       src/args.c \
+       src/config.c \
+       src/buffer.c \
+       src/color.c \
+       lib/cJSON/cJSON.c
+
+OBJS = $(patsubst %.c,build/%.o,$(SRCS))
+
+HEADERS = $(wildcard include/*.h)
 
 all: $(TARGET)
 
 $(TARGET): $(OBJS)
-	$(CC) $(CFLAGS) -o $(TARGET) $(OBJS)
+	$(CC) $(CFLAGS) -o $@ $(OBJS)
 
-%.o: %.c $(HEADERS)
+build/%.o: %.c $(HEADERS)
+	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 run: $(TARGET)
 	./$(TARGET)
 
 clean:
-	rm -f $(OBJS) $(TARGET)
+	rm -rf build
 
 .PHONY: all clean run
