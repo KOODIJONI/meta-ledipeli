@@ -2,6 +2,10 @@ SUMMARY = "LED Matrix driver library and test utility"
 DESCRIPTION = "C library for controlling an LED matrix and accompanying executable."
 LICENSE = "CLOSED"
 
+# Avoid Pseudo path-mismatch when S = WORKDIR
+INHIBIT_PACKAGE_DEBUG_SPLIT = "1"
+INHIBIT_PACKAGE_STRIP = "1"
+
 SRC_URI = " \
     file://src \
     file://include \
@@ -16,7 +20,6 @@ S = "${WORKDIR}"
 do_compile() {
     # 1. Compile all library sources into the shared library
     LIB_SRCS=$(ls ${S}/src/*.c)
-
     ${CC} ${CPPFLAGS} ${CFLAGS} -std=c99 -D_POSIX_C_SOURCE=200809L -fPIC \
         -I${S}/include \
         -I${S}/internal \
@@ -28,7 +31,7 @@ do_compile() {
         ${LIB_SRCS} \
         ${S}/lib/cJSON/cJSON.c
 
-    # 2. Compile the standalone test executable by linking the shared library directly by path
+    # 2. Compile the standalone test executable
     ${CC} ${CPPFLAGS} ${CFLAGS} -std=c99 -D_POSIX_C_SOURCE=200809L \
         -I${S}/include \
         -I${S}/internal \
@@ -52,6 +55,7 @@ do_install() {
     install -m 0755 ${WORKDIR}/matrix_test ${D}${bindir}/matrix_test
 
     install -m 0644 ${S}/include/*.h ${D}${includedir}/ledmatrix-driver/
+
     install -m 0644 ${S}/config/matrix_config.json \
         ${D}${sysconfdir}/ledmatrix-driver/
 }
