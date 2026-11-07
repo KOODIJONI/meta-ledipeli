@@ -27,7 +27,6 @@ static ssize_t pwm_write(struct file *file, const char __user *buf, size_t count
         return -EFAULT;
     }
 
-    /* Minimal print to kernel log */
     pr_info("PWM_RX: Received %zu samples\n", n_samples);
     for (i = 0; i < n_samples; i++) {
         pr_info("sample[%zu] = %u\n", i, kernel_buf[i]);
@@ -44,7 +43,7 @@ static const struct file_operations pwm_fops = {
 
 static struct miscdevice pwm_misc = {
     .minor = MISC_DYNAMIC_MINOR,
-    .name = "ledmatrix", /* Creates /dev/pwm_buffer automatically */
+    .name = "ledmatrix", 
     .fops = &pwm_fops,
 };
 

@@ -1,5 +1,5 @@
 obj-m += ledmatrix.o
-ledmatrix-objs := kernel/ledmatrix.o
+ledmatrix-objs := src/ledmatrix.o
 
 all: modules
 
