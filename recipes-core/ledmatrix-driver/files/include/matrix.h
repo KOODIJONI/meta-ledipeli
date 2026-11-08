@@ -125,6 +125,7 @@ bool MatrixGetSerpentine(Matrix *m);
 
 int MatrixSetSize(Matrix *m, int rows, int cols);
 int MatrixGetSize(Matrix *m, int *rows, int *cols);
+
 //render functions
 int MatrixSwapBuffers(Matrix **write, Matrix **read);
 void MatrixFree(Matrix *m);
