@@ -401,7 +401,7 @@ float MatrixGetBrightness(Matrix *m) {
     return (float)m->brightness / 255.0f;
 }
 
-void MatrixDestroy(Matrix *m)
+void MatrixFree(Matrix *m)
 {
     if (m == NULL)
         return;
