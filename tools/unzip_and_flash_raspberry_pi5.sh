@@ -16,7 +16,7 @@ if [ -n "$1" ]; then
 else
   # Search for the newest .wic.bz2 archive in the default deploy directory or current directory
   if [ -d "$DEFAULT_DIR" ]; then
-    WIC_TARGET=$(ls -t "$DEFAULT_DIR"/ledipeli-image-raspberrypi3*.wic.bz2 2>/dev/null | head -n 1)
+	WIC_TARGET=$(ls -t "$DEFAULT_DIR"/ledipeli-image-raspberrypi5*.wic.bz2 2>/dev/null | head -n 1)
   fi
   
   if [ -z "$WIC_TARGET" ] || [ ! -f "$WIC_TARGET" ]; then
