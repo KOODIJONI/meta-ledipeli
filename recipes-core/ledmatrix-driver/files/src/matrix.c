@@ -11,20 +11,18 @@ int MatrixInit(Matrix *m, const MatrixConfig *config)
         return ERROR_NULL_POINTER;
 
     MatrixConfig default_config = {
-        .rows = ROWS,
-        .cols = COLS,
-        .brightness = 255,
-        .serpentine = false,
+        .rows = FALLBACK_ROWS,
+        .cols = FALLBACK_COLS,
+        .brightness = FALLBACK_BRIGHTNESS,
+        .serpentine = FALLBACK_SERPENTINE,
         .rotation = ROTATION_0,
         .serpentine_dir = CLOCKWISE,
         .start_corner = FIRST_CORNER
     };
 
-    if (config == NULL)
-        config = &default_config;
+    if (config == NULL) config = &default_config;
 
-    if (config->rows == 0 || config->cols == 0)
-        return ERROR_INVALID_COORDINATES;
+    if (config->rows == 0 || config->cols == 0) return ERROR_INVALID_COORDINATES;
 
     size_t count = (size_t)config->rows * config->cols;
 
