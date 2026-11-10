@@ -1,0 +1,76 @@
+/dts-v1/;
+/plugin/;
+
+/ {
+    compatible = "brcm,bcm2712";
+
+    fragment@0 {
+        target = <&spi0>;
+        __overlay__ {
+            status = "okay";
+            pinctrl-names = "default";
+            pinctrl-0 = <&spi0_pins>;
+            num-cs = <1>;
+            dmas = <&dma 16>, <&dma 17>;
+            dma-names = "tx", "rx";
+        };
+    };
+
+    fragment@1 {
+        target = <&spi1>;
+        __overlay__ {
+            status = "okay";
+            pinctrl-names = "default";
+            pinctrl-0 = <&spi1_pins>;
+            num-cs = <1>;
+            dmas = <&dma 18>, <&dma 19>;
+            dma-names = "tx", "rx";
+        };
+    };
+
+    fragment@2 {
+        target = <&spi2>;
+        __overlay__ {
+            status = "okay";
+            pinctrl-names = "default";
+            pinctrl-0 = <&spi2_pins>;
+            num-cs = <1>;
+            dmas = <&dma 20>, <&dma 21>;
+            dma-names = "tx", "rx";
+        };
+    };
+
+    fragment@3 {
+        target = <&spi3>;
+        __overlay__ {
+            status = "okay";
+            pinctrl-names = "default";
+            pinctrl-0 = <&spi3_pins>;
+            num-cs = <1>;
+            dmas = <&dma 22>, <&dma 23>;
+            dma-names = "tx", "rx";
+        };
+    };
+
+    fragment@4 {
+        target = <&gpio>;
+        __overlay__ {
+            spi0_pins: spi0_pins {
+                brcm,pins = <10 11>; 
+                brcm,function = <3>;  
+            };
+            spi1_pins: spi1_pins {
+                brcm,pins = <20 21>; 
+                brcm,function = <3>;  
+            };
+            spi2_pins: spi2_pins {
+                brcm,pins = <41 42>; 
+                brcm,function = <3>;   
+            };
+            spi3_pins: spi3_pins {
+                brcm,pins = <5 6>;   
+                brcm,function = <3>;   
+            };
+        };
+    };
+};

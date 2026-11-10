@@ -27,13 +27,13 @@ int main(int argc, char *argv[])
     Matrix read_matrix;
     Matrix write_matrix;
 
-    result = MatrixInitWithJson(&read_matrix, "./config/matrix_config.json");
+    result = MatrixInit(&read_matrix, &config);
     if (result != OK) {
         fprintf(stderr, "Error: failed to initialize read matrix\n");
         return 1;
     }
 
-    result = MatrixInitWithJson(&write_matrix, "./config/matrix_config.json");
+    result = MatrixInit(&write_matrix, &config);
     if (result != OK) {
         fprintf(stderr, "Error: failed to initialize write matrix\n");
         return 1;
@@ -86,10 +86,14 @@ int main(int argc, char *argv[])
     MatrixPrintPhysical(&read_matrix);
     MatrixPrintRawBuffer(&read_matrix);
     
-    BufferPrintRaw(&buffer);
+    //BufferPrintRaw(&buffer);
 
-    // Release resources
+    //BufferPrintBin(&buffer);
+
     BufferFree(&buffer);
+
+    MatrixFree(&read_matrix);
+    MatrixFree(&write_matrix);
     
 
     return 0;

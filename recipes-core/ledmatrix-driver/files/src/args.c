@@ -17,10 +17,10 @@ int parse_args(int argc, char *argv[], MatrixConfig *config)
     if (argc != 2) return ERROR_INVALID_COORDINATES;
 
     *config = (MatrixConfig) {
-        .rows = ROWS,
-        .cols = COLS,
-        .brightness = MAX_BRIGHTNESS,
-        .serpentine = SERPENTINE,
+        .rows = FALLBACK_ROWS,
+        .cols = FALLBACK_COLS,
+        .brightness = FALLBACK_BRIGHTNESS,
+        .serpentine = FALLBACK_SERPENTINE,
         .rotation = ROTATION_0,
         .serpentine_dir = CLOCKWISE,
         .start_corner = FIRST_CORNER

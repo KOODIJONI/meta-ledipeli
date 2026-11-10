@@ -11,20 +11,18 @@ int MatrixInit(Matrix *m, const MatrixConfig *config)
         return ERROR_NULL_POINTER;
 
     MatrixConfig default_config = {
-        .rows = ROWS,
-        .cols = COLS,
-        .brightness = 255,
-        .serpentine = false,
+        .rows = FALLBACK_ROWS,
+        .cols = FALLBACK_COLS,
+        .brightness = FALLBACK_BRIGHTNESS,
+        .serpentine = FALLBACK_SERPENTINE,
         .rotation = ROTATION_0,
         .serpentine_dir = CLOCKWISE,
         .start_corner = FIRST_CORNER
     };
 
-    if (config == NULL)
-        config = &default_config;
+    if (config == NULL) config = &default_config;
 
-    if (config->rows == 0 || config->cols == 0)
-        return ERROR_INVALID_COORDINATES;
+    if (config->rows == 0 || config->cols == 0) return ERROR_INVALID_COORDINATES;
 
     size_t count = (size_t)config->rows * config->cols;
 
@@ -181,7 +179,6 @@ int MatrixPrintRawBuffer(const Matrix *m) {
         RgbColor color = m->colors[i];
         printf("%02X%02X%02X ", color.r, color.g, color.b);
         
-        // FIXED: Wrap line based on columns, not rows
         if ((i + 1) % m->cols == 0) {
             printf("\n");
         }
@@ -226,6 +223,34 @@ int MatrixWriteRectFill(Matrix *m, uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y
         return ERROR_OUT_OF_BOUNDS;
     }
 }
+int MatrixWriteLine(Matrix *m, uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, RgbColor color){
+        
+    if (MatrixValidate(m) != OK) {
+        return ERROR_NULL_POINTER;
+    }
+    
+    if (MatrixCheckBounds(m, x1, y1) != OK || MatrixCheckBounds(m, x2, y2) != OK){
+        return ERROR_OUT_OF_BOUNDS;
+    } 
+  
+    int dx =  abs((int)x2 - (int)x1);
+    int dy = -abs((int)y2 - (int)y1);
+    int sx = x1 < x2 ? 1 : -1;
+    int sy = y1 < y2 ? 1 : -1;
+    int err = dx + dy;
+    int x = x1, y = y1;
+
+    for (;;) {
+        int r = MatrixWriteColor(m, x, y, &color);
+        if (r != OK) return r;
+        if (x == x2 && y == y2) break;
+        int e2 = 2 * err;
+        if (e2 >= dy) { err += dy; x += sx; }
+        if (e2 <= dx) { err += dx; y += sy; }
+    }
+    return OK;
+}
+
 int MatrixWriteAll(Matrix *m, RgbColor color)
 {
     if (MatrixValidate(m) != OK) {
@@ -401,7 +426,7 @@ float MatrixGetBrightness(Matrix *m) {
     return (float)m->brightness / 255.0f;
 }
 
-void MatrixDestroy(Matrix *m)
+void MatrixFree(Matrix *m)
 {
     if (m == NULL)
         return;

@@ -8,35 +8,11 @@
 
 #include "color.h"
 
-#ifndef ROWS
-#define ROWS 23
-#endif
+#define FALLBACK_ROWS 23
+#define FALLBACK_COLS 23
 
-#ifndef COLS
-#define COLS 23
-#endif
-
-#define COLOR_BITS 8
-#define OUTPUT_BUFFER_SIZE (ROWS * COLS)  
-#define RGB_BITS (3 * COLOR_BITS)
-
-#define MAX_BRIGHTNESS 255
-
-#define BRIGHTNESS MAX_BRIGHTNESS
-
-#ifndef SERPENTINE
-#define SERPENTINE true
-#endif
-
-#ifndef MATRIX_LAYOUT
-#define MATRIX_LAYOUT LAYOUT_TOP_LEFT_HORIZONTAL
-#endif
-
-#ifndef MATRIX_ROTATION
-#define MATRIX_ROTATION ROTATION_0
-#endif
-
-
+#define FALLBACK_BRIGHTNESS 255
+#define FALLBACK_SERPENTINE true
 extern bool debug;
 
 
@@ -125,8 +101,10 @@ bool MatrixGetSerpentine(Matrix *m);
 
 int MatrixSetSize(Matrix *m, int rows, int cols);
 int MatrixGetSize(Matrix *m, int *rows, int *cols);
+
 //render functions
 int MatrixSwapBuffers(Matrix **write, Matrix **read);
+void MatrixFree(Matrix *m);
 
 
 #endif // MATRIX_H
