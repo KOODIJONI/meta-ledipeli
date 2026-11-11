@@ -4,6 +4,8 @@ LICENSE = "MIT"
 inherit core-image
 
 IMAGE_INSTALL:append = " \
+    mosquitto \
+    mosquitto-clients \
     packagegroup-core-boot \
     dropbear \
     nginx \
@@ -22,3 +24,5 @@ IMAGE_INSTALL:append = " \
 "
 SYSTEMD_AUTO_ENABLE:dropbear = "enable"
 IMAGE_ROOTFS_SIZE ?= "819200"
+
+PACKAGECONFIG:append:pn-mosquitto = " websockets"
