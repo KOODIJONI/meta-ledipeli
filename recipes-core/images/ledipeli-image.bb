@@ -24,6 +24,7 @@ IMAGE_INSTALL:append = " \
     libegl-mesa \
     libgles2-mesa \
     python3-mediapipe \
+    hand-client \
 "
 SYSTEMD_AUTO_ENABLE:dropbear = "enable"
 IMAGE_ROOTFS_SIZE ?= "819200"
