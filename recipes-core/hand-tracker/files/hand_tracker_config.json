@@ -1,0 +1,17 @@
+{
+    "recognizer": {
+        "debug": true,
+        "model": {
+            "path": "/usr/share/hand-tracker/gesture_recognizer.task"
+        },
+        "ipc": {
+            "socket_path": "/tmp/hand_tracker.sock"
+        },
+        "recognition": {
+            "num_hands": 2,
+            "min_hand_detection_confidence": 0.5,
+            "min_hand_presence_confidence": 0.5,
+            "min_tracking_confidence": 0.5
+        } 
+   }
+}

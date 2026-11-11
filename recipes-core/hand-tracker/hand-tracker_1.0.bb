@@ -5,8 +5,10 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda
 
 SRC_URI = "file://main.py \
            file://camera.py \
+           file://config.py \
            file://inferance.py \
            file://ipc.py \
+           file://parse_args.py \
            file://hand_tracker.service \
            file://hand_tracker_config.json \
            file://gesture_recognizer.task \
@@ -36,8 +38,10 @@ do_install() {
 
     install -m 0755 ${WORKDIR}/main.py ${D}${datadir}/hand-tracker/main.py
     install -m 0755 ${WORKDIR}/camera.py ${D}${datadir}/hand-tracker/camera.py
+    install -m 0755 ${WORKDIR}/config.py ${D}${datadir}/hand-tracker/config.py
     install -m 0755 ${WORKDIR}/inferance.py ${D}${datadir}/hand-tracker/inferance.py
     install -m 0755 ${WORKDIR}/ipc.py ${D}${datadir}/hand-tracker/ipc.py
+    install -m 0755 ${WORKDIR}/parse_args.py ${D}${datadir}/hand-tracker/parse_args.py
     install -m 0644 ${WORKDIR}/hand_tracker_config.json ${D}${datadir}/hand-tracker/hand_tracker_config.json
     install -m 0644 ${WORKDIR}/gesture_recognizer.task ${D}${datadir}/hand-tracker/gesture_recognizer.task
 

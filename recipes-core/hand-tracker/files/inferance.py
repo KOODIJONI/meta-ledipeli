@@ -17,14 +17,20 @@ HAND_CONNECTIONS = [
 HAND_COLORS = [(0, 255, 0), (255, 128, 0)]
 
 
-def create_recognizer(model_path, num_hands=2):
+def create_recognizer(
+    model_path,
+    num_hands=2,
+    min_hand_detection_confidence=0.5,
+    min_hand_presence_confidence=0.5,
+    min_tracking_confidence=0.5,
+):
     options = vision.GestureRecognizerOptions(
         base_options=python.BaseOptions(model_asset_path=model_path),
         running_mode=vision.RunningMode.IMAGE,
         num_hands=num_hands,
-        min_hand_detection_confidence=0.5,
-        min_hand_presence_confidence=0.5,
-        min_tracking_confidence=0.5,
+        min_hand_detection_confidence=min_hand_detection_confidence,
+        min_hand_presence_confidence=min_hand_presence_confidence,
+        min_tracking_confidence=min_tracking_confidence,
     )
     return vision.GestureRecognizer.create_from_options(options)
 
