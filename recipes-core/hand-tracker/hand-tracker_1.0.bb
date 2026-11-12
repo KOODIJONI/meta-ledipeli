@@ -1,47 +1,61 @@
-SUMMARY = "Modular C++ Hand Tracker with OpenCV, TFLite, and Unix Socket IPC"
-DESCRIPTION = "Captures camera frames, runs TFLite hand landmark inference, and streams coordinates via Unix sockets."
+SUMMARY = "Python-based Hand Tracker with MediaPipe and OpenCV"
+DESCRIPTION = "Captures camera frames, runs MediaPipe gesture recognition, and detects hand landmarks."
 LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda2f7b4f302"
 
-SRC_URI = "file://main.cpp \
-           file://camera.hpp \
-           file://camera.cpp \
-           file://inference.hpp \
-           file://inference.cpp \
-           file://ipc.hpp \
-           file://ipc.cpp \
-           file://CMakeLists.txt \
-           file://hand-tracker.service \
-           file://hand_landmark_lite.tflite"
+SRC_URI = "file://main.py \
+           file://camera.py \
+           file://config.py \
+           file://inferance.py \
+           file://ipc.py \
+           file://parse_args.py \
+           file://hand_tracker.service \
+           file://hand_tracker_config.json \
+           file://gesture_recognizer.task \
+           "
 
 S = "${WORKDIR}"
 
-inherit cmake systemd
+inherit systemd
 
-DEPENDS = "opencv libtensorflow-lite pkgconfig-native flatbuffers"
-RDEPENDS:${PN} = "opencv libtensorflow-lite flatbuffers"
+RDEPENDS:${PN} += "\
+    python3-core \
+    python3-opencv \
+    python3-mediapipe \
+    python3-numpy \
+"
 
-SYSTEMD_SERVICE:${PN} = "hand-tracker.service"
 SYSTEMD_AUTO_ENABLE:${PN} = "enable"
+SYSTEMD_SERVICE:${PN} = "hand-tracker.service"
 
-do_configure:prepend() {
-    if [ -f ${STAGING_LIBDIR}/pkgconfig/libtensorflow-lite.pc ] && [ ! -f ${STAGING_LIBDIR}/pkgconfig/tensorflow-lite.pc ]; then
-        ln -s libtensorflow-lite.pc ${STAGING_LIBDIR}/pkgconfig/tensorflow-lite.pc
-    fi
-}
+do_configure[noexec] = "1"
+do_compile[noexec] = "1"
 
 do_install() {
-    # 1. Install compiled binary
     install -d ${D}${bindir}
-    install -m 0755 hand-tracker ${D}${bindir}/
-
-    # 2. Install TFLite model asset
     install -d ${D}${datadir}/hand-tracker
-    install -m 0644 ${WORKDIR}/hand_landmark_lite.tflite ${D}${datadir}/hand-tracker/
+    install -d ${D}${systemd_unitdir}/system
 
-    # 3. Install systemd service unit
-    install -d ${D}${systemd_system_unitdir}
-    install -m 0644 ${WORKDIR}/hand-tracker.service ${D}${systemd_system_unitdir}/
+    install -m 0755 ${WORKDIR}/main.py ${D}${datadir}/hand-tracker/main.py
+    install -m 0755 ${WORKDIR}/camera.py ${D}${datadir}/hand-tracker/camera.py
+    install -m 0755 ${WORKDIR}/config.py ${D}${datadir}/hand-tracker/config.py
+    install -m 0755 ${WORKDIR}/inferance.py ${D}${datadir}/hand-tracker/inferance.py
+    install -m 0755 ${WORKDIR}/ipc.py ${D}${datadir}/hand-tracker/ipc.py
+    install -m 0755 ${WORKDIR}/parse_args.py ${D}${datadir}/hand-tracker/parse_args.py
+    install -m 0644 ${WORKDIR}/hand_tracker_config.json ${D}${datadir}/hand-tracker/hand_tracker_config.json
+    install -m 0644 ${WORKDIR}/gesture_recognizer.task ${D}${datadir}/hand-tracker/gesture_recognizer.task
+
+    cat > ${D}${bindir}/hand-tracker <<'EOF'
+#!/bin/sh
+exec /usr/bin/python3 /usr/share/hand-tracker/main.py "$@"
+EOF
+    chmod 0755 ${D}${bindir}/hand-tracker
+
+    install -m 0644 ${WORKDIR}/hand_tracker.service ${D}${systemd_unitdir}/system/hand-tracker.service
 }
 
-FILES:${PN} += "${datadir}/hand-tracker/hand_landmark_lite.tflite"
+FILES:${PN} += "\
+    ${bindir}/hand-tracker \
+    ${datadir}/hand-tracker \
+    ${systemd_unitdir}/system/hand-tracker.service \
+"
