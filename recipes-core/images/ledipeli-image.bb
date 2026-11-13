@@ -25,6 +25,28 @@ IMAGE_INSTALL:append = " \
     libgles2-mesa \
     python3-mediapipe \
     hand-client \
+    ledmatrix-kernel \
+    ledmatrix-driver \
+    ledmatrix-py \
+    game-engine \
 "
+ENABLE_SPI_BUS = "1"
+
+RPI_EXTRA_CONFIG:append = "\n\
+dtoverlay=spi0-1cs,cs0_spidev=off\n\
+dtoverlay=spi1-1cs,cs0_spidev=off\n\
+dtoverlay=spi2-1cs-pi5,cs0_spidev=off\n\
+dtoverlay=spi3-1cs-pi5,cs0_spidev=off\n\
+dtoverlay=ledipeli-spi-ws281x,speed0=6400000,speed1=6400000,speed2=6400000,speed3=6400000\n\
+"
+
+RPI_EXTRA_IMAGE_BOOT_FILES:append = " \
+    ledipeli-spi-ws281x.dtbo;overlays/ledipeli-spi-ws281x.dtbo \
+"
+
+RPI_EXTRA_CONFIG:append = "\n\
+dtoverlay=ledipeli-spi-ws281x,speed0=6400000,speed1=6400000,speed2=6400000,speed3=6400000\n\
+"
+
 SYSTEMD_AUTO_ENABLE:dropbear = "enable"
 IMAGE_ROOTFS_SIZE ?= "819200"
