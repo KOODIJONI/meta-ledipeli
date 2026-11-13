@@ -1,0 +1,26 @@
+{
+        
+    "engine": {
+        "name": "game-engine",
+        "version": "1.0.0",
+        "matrix_config_path": "/etc/ledmatrix-driver/matrix_config.json",
+        "hand_tracker_socket": "/tmp/hand_tracker.sock",
+        "fps": 60,
+        "width": 640,
+        "height": 480
+    },
+    "startup": {
+        "initial_game": "test_game",
+        "available_games": ["test_game","tetris", "pong", "touch"]  
+    },
+
+    "tetris": {
+        "start_level": 1,
+        "drop_interval_ms": 700
+    },
+    "debug": {
+        "log_level": "info",
+        "print_input": false,
+        "show_fps": false
+    }
+}

@@ -1,0 +1,19 @@
+[Unit]
+Description=Game Engine Service
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/usr/bin/game-engine
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONIOENCODING=UTF-8
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=game-engine
+ExecStart=/usr/bin/python3 /usr/bin/game-engine/main.py -c /etc/game-engine/game_engine.json
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
