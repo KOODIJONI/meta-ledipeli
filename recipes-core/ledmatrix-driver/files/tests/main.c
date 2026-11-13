@@ -5,11 +5,6 @@
 #include "matrix.h"
 #include "buffer.h"
 
-#ifdef DEBUG
-bool debug = true;
-#else
-bool debug = false;
-#endif
 
 int main(int argc, char *argv[])
 {

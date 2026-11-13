@@ -1,16 +1,23 @@
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "config.h"
+#include "matrix.h"
 #include "cJSON.h"
 
 int ConfigLoad(MatrixConfig *config, const char *path)
 {
     if (!config || !path) return ERROR_NULL_POINTER;
 
-    FILE *file = fopen(path, "r");
+    /* defaults: any key missing from the JSON keeps these values */
+    config->tile_rows = FALLBACK_TILE_ROWS;
+    config->tile_cols = FALLBACK_TILE_COLS;
+    config->grid_rows = FALLBACK_GRID_ROWS;
+    config->grid_cols = FALLBACK_GRID_COLS;
+    config->brightness = FALLBACK_BRIGHTNESS;
+    config->rotation = ROTATION_0;
 
+    FILE *file = fopen(path, "r");
     if (!file) return ERROR_INVALID_COORDINATES;
 
     if (fseek(file, 0, SEEK_END) != 0) {
@@ -47,40 +54,25 @@ int ConfigLoad(MatrixConfig *config, const char *path)
 
     cJSON *v;
 
-    #define GET_NUMBER(key, min, max, field)                 \
-        v = cJSON_GetObjectItemCaseSensitive(json, key);    \
-        if (v) {                                             \
-            if (!cJSON_IsNumber(v) || v->valuedouble < min || \
-                v->valuedouble > max ||                     \
-                v->valuedouble != (int)v->valuedouble) {    \
-                cJSON_Delete(json);                         \
-                return ERROR_INVALID_COORDINATES;          \
-            }                                               \
-            config->field = (uint8_t)v->valueint;           \
-        }
+#define GET_NUMBER(key, min, max, field)                    \
+    v = cJSON_GetObjectItemCaseSensitive(json, key);        \
+    if (v) {                                                \
+        if (!cJSON_IsNumber(v) || v->valuedouble < min ||   \
+            v->valuedouble > max ||                         \
+            v->valuedouble != (int)v->valuedouble) {        \
+            cJSON_Delete(json);                             \
+            return ERROR_INVALID_COORDINATES;               \
+        }                                                   \
+        config->field = (uint8_t)v->valueint;               \
+    }
 
-    GET_NUMBER("rows", 1, 255, rows)
-    GET_NUMBER("cols", 1, 255, cols)
+    GET_NUMBER("tile_rows", 1, 255, tile_rows)
+    GET_NUMBER("tile_cols", 1, 255, tile_cols)
+    GET_NUMBER("grid_rows", 1, 255, grid_rows)
+    GET_NUMBER("grid_cols", 1, 255, grid_cols)
     GET_NUMBER("brightness", 0, 255, brightness)
 
-    v = cJSON_GetObjectItemCaseSensitive(json, "serpentine");
-    if (v) {
-        if (!cJSON_IsBool(v)) {
-            cJSON_Delete(json);
-            return ERROR_INVALID_COORDINATES;
-        }
-        config->serpentine = cJSON_IsTrue(v);
-    }
-
-    v = cJSON_GetObjectItemCaseSensitive(json, "corner");
-    if (v) {
-        if (!cJSON_IsNumber(v) || v->valueint < 1 ||
-            v->valueint > 4 || v->valuedouble != v->valueint) {
-            cJSON_Delete(json);
-            return ERROR_INVALID_COORDINATES;
-        }
-        config->start_corner = (MatrixStartCorner)(v->valueint - 1);
-    }
+#undef GET_NUMBER
 
     v = cJSON_GetObjectItemCaseSensitive(json, "rotation");
     if (v) {
@@ -90,28 +82,11 @@ int ConfigLoad(MatrixConfig *config, const char *path)
         }
 
         switch (v->valueint) {
-            case 0:   config->rotation = ROTATION_0; break;
-            case 90:  config->rotation = ROTATION_90; break;
-            case 180: config->rotation = ROTATION_180; break;
-            case 270: config->rotation = ROTATION_270; break;
-            default:
-                cJSON_Delete(json);
-                return ERROR_INVALID_COORDINATES;
-        }
-    }
-
-    v = cJSON_GetObjectItemCaseSensitive(json, "direction");
-    if (v) {
-        if (!cJSON_IsString(v)) {
-            cJSON_Delete(json);
-            return ERROR_INVALID_COORDINATES;
-        }
-
-        if (strcmp(v->valuestring, "cw") == 0)
-            config->serpentine_dir = CLOCKWISE;
-        else if (strcmp(v->valuestring, "ccw") == 0)
-            config->serpentine_dir = COUNTERCLOCKWISE;
-        else {
+        case 0:   config->rotation = ROTATION_0; break;
+        case 90:  config->rotation = ROTATION_90; break;
+        case 180: config->rotation = ROTATION_180; break;
+        case 270: config->rotation = ROTATION_270; break;
+        default:
             cJSON_Delete(json);
             return ERROR_INVALID_COORDINATES;
         }

@@ -1,7 +1,7 @@
 CC = gcc
-
-CFLAGS = -Wall -Wextra -std=c99 -DDEBUG_MATRIX
+CFLAGS = -Wall -Wextra -std=c99 -D_POSIX_C_SOURCE=199309L -DDEBUG_MATRIX
 CFLAGS += -I./include -I./lib/cJSON
+
 
 TARGET = build/matrix_test
 
