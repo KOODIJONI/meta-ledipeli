@@ -5,26 +5,50 @@
 #include "matrix.h"
 #include "config.h"
 
+bool debug = false;
+
+/* ---------- logical size (after whole-panel rotation) ---------- */
+
+static inline int32_t MatrixLogicalW(const Matrix *m)
+{
+    return (m->rotation == ROTATION_90 || m->rotation == ROTATION_270) ? m->rows : m->cols;
+}
+
+static inline int32_t MatrixLogicalH(const Matrix *m)
+{
+    return (m->rotation == ROTATION_90 || m->rotation == ROTATION_270) ? m->cols : m->rows;
+}
+
+/* ---------- init ---------- */
+
 int MatrixInit(Matrix *m, const MatrixConfig *config)
 {
     if (m == NULL)
         return ERROR_NULL_POINTER;
 
     MatrixConfig default_config = {
-        .rows = FALLBACK_ROWS,
-        .cols = FALLBACK_COLS,
+        .tile_rows = FALLBACK_TILE_ROWS,
+        .tile_cols = FALLBACK_TILE_COLS,
+        .grid_rows = FALLBACK_GRID_ROWS,
+        .grid_cols = FALLBACK_GRID_COLS,
         .brightness = FALLBACK_BRIGHTNESS,
-        .serpentine = FALLBACK_SERPENTINE,
-        .rotation = ROTATION_0,
-        .serpentine_dir = CLOCKWISE,
-        .start_corner = FIRST_CORNER
+        .rotation = ROTATION_0
     };
 
     if (config == NULL) config = &default_config;
 
-    if (config->rows == 0 || config->cols == 0) return ERROR_INVALID_COORDINATES;
+    if (config->tile_rows == 0 || config->tile_cols == 0 ||
+        config->grid_rows == 0 || config->grid_cols == 0)
+        return ERROR_INVALID_COORDINATES;
 
-    size_t count = (size_t)config->rows * config->cols;
+    size_t rows = (size_t)config->grid_rows * config->tile_rows;
+    size_t cols = (size_t)config->grid_cols * config->tile_cols;
+
+    /* rows and cols are stored as uint8_t */
+    if (rows > 255 || cols > 255)
+        return ERROR_INVALID_COORDINATES;
+
+    size_t count = rows * cols;
 
     if (count > SIZE_MAX / sizeof(RgbColor))
         return ERROR_INVALID_COORDINATES;
@@ -34,13 +58,14 @@ int MatrixInit(Matrix *m, const MatrixConfig *config)
     if (colors == NULL) return ERROR_OUT_OF_MEMORY;
 
     m->colors = colors;
-    m->rows = config->rows;
-    m->cols = config->cols;
+    m->rows = (uint8_t)rows;
+    m->cols = (uint8_t)cols;
+    m->tile_rows = config->tile_rows;
+    m->tile_cols = config->tile_cols;
+    m->grid_rows = config->grid_rows;
+    m->grid_cols = config->grid_cols;
     m->brightness = config->brightness;
-    m->serpentine = config->serpentine;
     m->rotation = config->rotation;
-    m->serpentine_dir = config->serpentine_dir;
-    m->start_corner = config->start_corner;
 
     int result = MatrixValidate(m);
 
@@ -54,6 +79,7 @@ int MatrixInit(Matrix *m, const MatrixConfig *config)
 
     return OK;
 }
+
 int MatrixInitWithJson(Matrix *m, const char *json_path)
 {
     if (m == NULL || json_path == NULL) {
@@ -86,9 +112,20 @@ int MatrixValidate(const Matrix *m)
         return ERROR_INVALID_COORDINATES;
     }
 
+    if (m->tile_rows == 0 || m->tile_cols == 0 || m->grid_rows == 0 || m->grid_cols == 0 ||
+        (int)m->tile_rows * m->grid_rows != m->rows ||
+        (int)m->tile_cols * m->grid_cols != m->cols) {
+        if (debug) {
+            printf("Invalid tile layout: tile=%dx%d grid=%dx%d panel=%dx%d\n",
+                   m->tile_rows, m->tile_cols, m->grid_rows, m->grid_cols, m->rows, m->cols);
+        }
+        return ERROR_INVALID_COORDINATES;
+    }
+
     return OK;
 }
 
+/* ---------- debug printing ---------- */
 
 int MatrixPrintLogical(const Matrix *m)
 {
@@ -97,8 +134,8 @@ int MatrixPrintLogical(const Matrix *m)
     }
 
     printf("--- Logical View (Colors at [y][x]) ---\n");
-    for (int y = 0; y < m->rows; y++) {
-        for (int x = 0; x < m->cols; x++) {
+    for (int y = 0; y < MatrixLogicalH(m); y++) {
+        for (int x = 0; x < MatrixLogicalW(m); x++) {
             int32_t index = MatrixGetPixelIndex(m, x, y);
             if (index >= 0) {
                 RgbColor color = m->colors[index];
@@ -119,13 +156,13 @@ int MatrixPrintIndexLogical(const Matrix *m)
     }
 
     printf("--- Logical View (Physical Indices at [y][x]) ---\n");
-    for (int y = 0; y < m->rows; y++) {
-        for (int x = 0; x < m->cols; x++) {
+    for (int y = 0; y < MatrixLogicalH(m); y++) {
+        for (int x = 0; x < MatrixLogicalW(m); x++) {
             int32_t index = MatrixGetPixelIndex(m, x, y);
             if (index >= 0) {
-                printf("%3d ", index);
+                printf("%4d ", index);
             } else {
-                printf("ERR ");
+                printf("ERR  ");
             }
         }
         printf("\n");
@@ -133,6 +170,7 @@ int MatrixPrintIndexLogical(const Matrix *m)
     return OK;
 }
 
+/* One line per tile row, a blank line between tiles. */
 int MatrixPrintPhysical(const Matrix *m)
 {
     if (MatrixValidate(m) != OK) {
@@ -140,11 +178,15 @@ int MatrixPrintPhysical(const Matrix *m)
     }
 
     printf("--- Physical Memory Buffer (Colors from index 0 to N-1) ---\n");
+    int tile_pixels = m->tile_rows * m->tile_cols;
     int total_pixels = m->rows * m->cols;
     for (int i = 0; i < total_pixels; i++) {
         RgbColor color = m->colors[i];
-        printf("[%2d]:(%3d,%3d,%3d) ", i, color.r, color.g, color.b);
-        if ((i + 1) % m->rows == 0) {
+        printf("[%4d]:(%3d,%3d,%3d) ", i, color.r, color.g, color.b);
+        if ((i + 1) % m->tile_cols == 0) {
+            printf("\n");
+        }
+        if ((i + 1) % tile_pixels == 0) {
             printf("\n");
         }
     }
@@ -158,47 +200,138 @@ int MatrixPrintIndexPhysical(const Matrix *m)
     }
 
     printf("--- Physical Memory Buffer (Index Mapping 0 to N-1) ---\n");
+    int tile_pixels = m->tile_rows * m->tile_cols;
     int total_pixels = m->rows * m->cols;
     for (int i = 0; i < total_pixels; i++) {
-        printf("%3d ", i);
-        if ((i + 1) % m->rows == 0) {
+        printf("%4d ", i);
+        if ((i + 1) % m->tile_cols == 0) {
+            printf("\n");
+        }
+        if ((i + 1) % tile_pixels == 0) {
             printf("\n");
         }
     }
     return OK;
 }
 
-int MatrixPrintRawBuffer(const Matrix *m) {
+int MatrixPrintRawBuffer(const Matrix *m)
+{
     if (MatrixValidate(m) != OK) {
         return ERROR_NULL_POINTER;
     }
 
     printf("--- Raw Buffer Data ---\n");
+    int tile_pixels = m->tile_rows * m->tile_cols;
     int total_pixels = m->rows * m->cols;
     for (int i = 0; i < total_pixels; i++) {
         RgbColor color = m->colors[i];
         printf("%02X%02X%02X ", color.r, color.g, color.b);
-        
-        if ((i + 1) % m->cols == 0) {
+
+        if ((i + 1) % m->tile_cols == 0) {
+            printf("\n");
+        }
+        if ((i + 1) % tile_pixels == 0) {
             printf("\n");
         }
     }
     return OK;
 }
 
+/* ---------- bounds ---------- */
+
+/* x, y are logical coordinates (after rotation). */
 int MatrixCheckBounds(const Matrix *m, uint8_t x, uint8_t y)
 {
     if (MatrixValidate(m) != OK) {
         return ERROR_NULL_POINTER;
     }
 
-    if (x < m->cols && y < m->rows) {
+    if (x < MatrixLogicalW(m) && y < MatrixLogicalH(m)) {
         return OK;
     } else {
         return ERROR_OUT_OF_BOUNDS;
     }
 }
 
+/* ---------- pixel mapping ---------- */
+
+/*
+ * Logical (x, y) -> index in the physical buffer.
+ *
+ * 1. undo the whole-panel rotation to get unrotated panel coords (u, v)
+ * 2. split (u, v) into tile coords (tx, ty) and local coords (lx, ly)
+ * 3. tiles are chained row-major, pixels inside a tile are row-major
+ */
+int32_t MatrixGetPixelIndex(const Matrix *m, uint8_t x, uint8_t y)
+{
+    if (m == NULL) {
+        return ERROR_NULL_POINTER;
+    }
+
+    if (m->tile_rows == 0 || m->tile_cols == 0) {
+        return ERROR_INVALID_COORDINATES;
+    }
+
+    if (x >= MatrixLogicalW(m) || y >= MatrixLogicalH(m)) {
+        return ERROR_OUT_OF_BOUNDS;
+    }
+
+    const int32_t W = m->cols;
+    const int32_t H = m->rows;
+
+    int32_t u, v;
+    switch (m->rotation) {
+    case ROTATION_0:   u = x;         v = y;         break;
+    case ROTATION_90:  u = W - 1 - y; v = x;         break;
+    case ROTATION_180: u = W - 1 - x; v = H - 1 - y; break;
+    case ROTATION_270: u = y;         v = H - 1 - x; break;
+    default:           return ERROR_OUT_OF_BOUNDS;
+    }
+
+    const int32_t tx = u / m->tile_cols, lx = u % m->tile_cols;
+    const int32_t ty = v / m->tile_rows, ly = v % m->tile_rows;
+
+    const int32_t tile = ty * m->grid_cols + tx;
+    const int32_t tile_pixels = (int32_t)m->tile_rows * m->tile_cols;
+
+    /* Inside each tile, pixels are stored row-major in x/y order:
+     * index = local_y * tile_cols + local_x
+     * This must be used instead of the transposed form that accidentally
+     * multiplies x by tile_rows. That transposed form only looks correct
+     * for square tiles like 8x8, but breaks when the panel topology is
+     * arranged as multiple tiles across a row/column. */
+    return tile * tile_pixels + ly * m->tile_cols + lx;
+}
+
+/* ---------- writing ---------- */
+
+int MatrixWriteColor(Matrix *m, uint8_t x, uint8_t y, const RgbColor *self)
+{
+    if (m == NULL || self == NULL) {
+        return ERROR_NULL_POINTER;
+    }
+
+    int32_t index = MatrixGetPixelIndex(m, x, y);
+    if (index < 0) {
+        return index;
+    }
+
+    if (m->brightness == 255) {
+        m->colors[index] = *self;
+        return OK;
+    }
+    if (m->brightness == 0) {
+        m->colors[index] = (RgbColor){0, 0, 0};
+        return OK;
+    }
+
+    /* /255 keeps full scale exact (255 * b / 255 == b) */
+    m->colors[index].r = (uint8_t)(((uint16_t)self->r * m->brightness) / 255);
+    m->colors[index].g = (uint8_t)(((uint16_t)self->g * m->brightness) / 255);
+    m->colors[index].b = (uint8_t)(((uint16_t)self->b * m->brightness) / 255);
+
+    return OK;
+}
 
 int MatrixWriteRectFill(Matrix *m, uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, RgbColor color)
 {
@@ -206,33 +339,34 @@ int MatrixWriteRectFill(Matrix *m, uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y
         return ERROR_NULL_POINTER;
     }
 
-    if (x1 > x2 || y1 > y2){
+    if (x1 > x2 || y1 > y2) {
         printf("Start coordinates larger than end coordinates\n");
         return ERROR_OUT_OF_BOUNDS;
     }
 
-    if (MatrixCheckBounds(m, x1, y1) == OK && MatrixCheckBounds(m, x2, y2) == OK){
-            for (int y=y1;y<=y2;y++){
-                for (int x=x1; x<=x2;x++){
-                    MatrixWriteColor(m, x, y, &color);
-                }
+    if (MatrixCheckBounds(m, x1, y1) == OK && MatrixCheckBounds(m, x2, y2) == OK) {
+        for (int y = y1; y <= y2; y++) {
+            for (int x = x1; x <= x2; x++) {
+                MatrixWriteColor(m, x, y, &color);
             }
-            return OK;
+        }
+        return OK;
     } else {
         printf("Out of bounds\n");
         return ERROR_OUT_OF_BOUNDS;
     }
 }
-int MatrixWriteLine(Matrix *m, uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, RgbColor color){
-        
+
+int MatrixWriteLine(Matrix *m, uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, RgbColor color)
+{
     if (MatrixValidate(m) != OK) {
         return ERROR_NULL_POINTER;
     }
-    
-    if (MatrixCheckBounds(m, x1, y1) != OK || MatrixCheckBounds(m, x2, y2) != OK){
+
+    if (MatrixCheckBounds(m, x1, y1) != OK || MatrixCheckBounds(m, x2, y2) != OK) {
         return ERROR_OUT_OF_BOUNDS;
-    } 
-  
+    }
+
     int dx =  abs((int)x2 - (int)x1);
     int dy = -abs((int)y2 - (int)y1);
     int sx = x1 < x2 ? 1 : -1;
@@ -257,94 +391,90 @@ int MatrixWriteAll(Matrix *m, RgbColor color)
         return ERROR_NULL_POINTER;
     }
 
-    for (int y=0;y<m->rows;y++){
-        for (int x=0; x<m->cols;x++){
+    for (int y = 0; y < MatrixLogicalH(m); y++) {
+        for (int x = 0; x < MatrixLogicalW(m); x++) {
             MatrixWriteColor(m, x, y, &color);
         }
     }
     return OK;
 }
-static inline int32_t MatrixLogicalW(const Matrix *m)
+
+/* ---------- getters and setters ---------- */
+
+int MatrixSetBrightness(Matrix *m, float brightness)
 {
-    return (m->rotation == ROTATION_90 || m->rotation == ROTATION_270) ? m->rows : m->cols;
-}
+    if (MatrixValidate(m) != OK) return ERROR_NULL_POINTER;
 
-static inline int32_t MatrixLogicalH(const Matrix *m)
-{
-    return (m->rotation == ROTATION_90 || m->rotation == ROTATION_270) ? m->cols : m->rows;
-}
+    if (brightness < 0.0f || brightness > 1.0f) return ERROR_INVALID_COORDINATES;
 
-int32_t MatrixGetPixelIndex(const Matrix *m, uint8_t x, uint8_t y)
-{
-    if (m == NULL) {
-        return ERROR_NULL_POINTER;
-    }
-
-    const int32_t rows = m->rows;  
-    const int32_t cols = m->cols;
-
-    if (x >= MatrixLogicalW(m) || y >= MatrixLogicalH(m)) {
-        return ERROR_OUT_OF_BOUNDS;
-    }
-
-    int32_t u, v;
-    switch (m->rotation) {
-    case ROTATION_0:   u = x;             v = y;             break;
-    case ROTATION_90:  u = cols - 1 - y;  v = x;             break;
-    case ROTATION_180: u = cols - 1 - x;  v = rows - 1 - y;  break;
-    case ROTATION_270: u = y;             v = rows - 1 - x;  break;
-    default:           return ERROR_OUT_OF_BOUNDS;
-    }
-
-    switch (m->start_corner) {
-    case FIRST_CORNER:  break;                                      
-    case SECOND_CORNER: v = rows - 1 - v; break;                    
-    case THIRD_CORNER:  u = cols - 1 - u; v = rows - 1 - v; break;  
-    case FOURTH_CORNER: u = cols - 1 - u; break;                    
-    default:            return ERROR_OUT_OF_BOUNDS;
-    }
-
-    const bool corner_is_odd = (m->start_corner == FIRST_CORNER ||
-                                m->start_corner == THIRD_CORNER);
-    const bool row_major = ((m->serpentine_dir == CLOCKWISE) == corner_is_odd);
-
-    if (row_major) {
-        const int32_t uu = (m->serpentine && (v & 1)) ? (cols - 1 - u) : u;
-        return (v * cols) + uu;
-    } else {
-        const int32_t vv = (m->serpentine && (u & 1)) ? (rows - 1 - v) : v;
-        return (u * rows) + vv;
-    }
-}
-int MatrixWriteColor(Matrix *m, uint8_t x, uint8_t y, const RgbColor *self)
-{
-    if (m == NULL || self == NULL) {
-        return ERROR_NULL_POINTER;
-    }
-
-    int32_t index = MatrixGetPixelIndex(m, x, y);
-    if (index < 0) {
-        return index; 
-    }
-
-    if (m->brightness == 255) {
-        m->colors[index] = *self;
-        return OK;
-    }
-    if (m->brightness == 0) {
-        m->colors[index] = (RgbColor){0, 0, 0};
-        return OK;
-    }
-
-    m->colors[index].r = (uint8_t)((uint16_t)self->r * m->brightness >> 8);
-    m->colors[index].g = (uint8_t)((uint16_t)self->g * m->brightness >> 8);
-    m->colors[index].b = (uint8_t)((uint16_t)self->b * m->brightness >> 8);
+    m->brightness = (uint8_t)(brightness * 255.0f + 0.5f);
 
     return OK;
 }
 
+float MatrixGetBrightness(Matrix *m)
+{
+    if (MatrixValidate(m) != OK) return -1.0f;
+    return (float)m->brightness / 255.0f;
+}
 
-int MatrixSwapBuffers(Matrix **write, Matrix **read){
+/*
+ * Change the number of tiles. The buffer is reallocated and cleared,
+ * because old pixels would end up in the wrong places after a reshape.
+ */
+int MatrixSetGrid(Matrix *m, int grid_rows, int grid_cols)
+{
+    if (m == NULL)
+        return ERROR_NULL_POINTER;
+
+    if (m->tile_rows == 0 || m->tile_cols == 0)
+        return ERROR_INVALID_COORDINATES;
+
+    if (grid_rows <= 0 || grid_cols <= 0)
+        return ERROR_INVALID_COORDINATES;
+
+    size_t rows = (size_t)grid_rows * m->tile_rows;
+    size_t cols = (size_t)grid_cols * m->tile_cols;
+
+    if (rows > 255 || cols > 255)
+        return ERROR_INVALID_COORDINATES;
+
+    size_t count = rows * cols;
+
+    RgbColor *new_colors = calloc(count, sizeof(RgbColor));
+    if (new_colors == NULL)
+        return ERROR_OUT_OF_MEMORY;
+
+    free(m->colors);
+    m->colors = new_colors;
+    m->grid_rows = (uint8_t)grid_rows;
+    m->grid_cols = (uint8_t)grid_cols;
+    m->rows = (uint8_t)rows;
+    m->cols = (uint8_t)cols;
+
+    return OK;
+}
+
+/* Returns the logical size (what x and y range over after rotation). */
+int MatrixGetSize(Matrix *m, int *rows, int *cols)
+{
+    if (MatrixValidate(m) != OK) return ERROR_NULL_POINTER;
+    if (rows == NULL || cols == NULL) return ERROR_NULL_POINTER;
+
+    *rows = MatrixLogicalH(m);
+    *cols = MatrixLogicalW(m);
+
+    return OK;
+}
+
+/* ---------- render ---------- */
+
+int MatrixSwapBuffers(Matrix **write, Matrix **read)
+{
+    if (write == NULL || read == NULL) {
+        return ERROR_NULL_POINTER;
+    }
+
     if (MatrixValidate(*write) != OK || MatrixValidate(*read) != OK) {
         return ERROR_NULL_POINTER;
     }
@@ -354,76 +484,6 @@ int MatrixSwapBuffers(Matrix **write, Matrix **read){
     *read = temp;
 
     return OK;
-}
-int MatrixSetSerpentine(Matrix *m, bool serpentine) {
-    if (MatrixValidate(m) != OK) return ERROR_NULL_POINTER;
-    
-    m->serpentine = serpentine;
-    return OK;
-}
-
-bool MatrixGetSerpentine(Matrix *m) {
-    if (MatrixValidate(m) != OK) return false;
-    return m->serpentine;
-}
-
-int MatrixSetSize(Matrix *m, int rows, int cols)
-{
-    if (m == NULL)
-        return ERROR_NULL_POINTER;
-
-    if (rows <= 0 || cols <= 0 || rows > 255 || cols > 255)
-        return ERROR_INVALID_COORDINATES;
-
-    size_t new_count = (size_t)rows * (size_t)cols;
-
-    if (new_count > SIZE_MAX / sizeof(RgbColor))
-        return ERROR_INVALID_COORDINATES;
-
-    RgbColor *new_colors = realloc(
-        m->colors,
-        new_count * sizeof(RgbColor)
-    );
-
-    if (new_colors == NULL)
-        return ERROR_NULL_POINTER;
-
-    size_t old_count = (size_t)m->rows * m->cols;
-
-    if (new_count > old_count) {
-        memset(
-            new_colors + old_count,
-            0,
-            (new_count - old_count) * sizeof(RgbColor)
-        );
-    }
-
-    m->colors = new_colors;
-    m->rows = (uint8_t)rows;
-    m->cols = (uint8_t)cols;
-
-    return OK;
-}
-int MatrixGetSize(Matrix *m, int *rows, int *cols) {
-    if (MatrixValidate(m) != OK) return ERROR_NULL_POINTER;
-    
-    *rows = m->rows;
-    *cols = m->cols;
-
-    return OK;
-}
-int MatrixSetBrightness(Matrix *m, float brightness) {
-    if (MatrixValidate(m) != OK) return ERROR_NULL_POINTER;
-    
-    if (brightness < 0.0f || brightness > 1.0f) return ERROR_INVALID_COORDINATES;
-
-    m->brightness = (uint8_t)(brightness * 255.0f);
-
-    return OK;
-}
-float MatrixGetBrightness(Matrix *m) {
-    if (MatrixValidate(m) != OK) return -1.0f;
-    return (float)m->brightness / 255.0f;
 }
 
 void MatrixFree(Matrix *m)
