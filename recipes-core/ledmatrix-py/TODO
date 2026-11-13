@@ -1,0 +1,7 @@
+Add libledmatrix.so file 
+
+Expose init function
+Expose draw pixel line and rectangle functions
+Expose swapbuffer and kernel open close and send functions
+Free heap function!!
+
