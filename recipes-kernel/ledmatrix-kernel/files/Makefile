@@ -1,7 +1,7 @@
 obj-m += ledmatrix.o
-ledmatrix-objs := src/ledmatrix.o
+ledmatrix-y := src/ledmatrix.o
 
-ccflags-y := -I$(src)/include
+ccflags-y += -I$(src)/include
 
 all: modules
 

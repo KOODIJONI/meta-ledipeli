@@ -6,71 +6,107 @@
 
     fragment@0 {
         target = <&spi0>;
+
         __overlay__ {
             status = "okay";
-            pinctrl-names = "default";
-            pinctrl-0 = <&spi0_pins>;
-            num-cs = <1>;
-            dmas = <&dma 16>, <&dma 17>;
-            dma-names = "tx", "rx";
+            #address-cells = <1>;
+            #size-cells = <0>;
+
+            ledmatrix0: ledmatrix@0 {
+                compatible = "joni,ledmatrix-channel";
+                reg = <0>;
+                joni,channel = <0>;
+                spi-max-frequency = <6400000>;
+                status = "okay";
+            };
         };
     };
 
     fragment@1 {
-        target = <&spi1>;
+        target-path = "/axi/pcie@120000/rp1/spi@54000";
+
         __overlay__ {
             status = "okay";
-            pinctrl-names = "default";
-            pinctrl-0 = <&spi1_pins>;
-            num-cs = <1>;
-            dmas = <&dma 18>, <&dma 19>;
-            dma-names = "tx", "rx";
+            #address-cells = <1>;
+            #size-cells = <0>;
+
+            ledmatrix1: ledmatrix@0 {
+                compatible = "joni,ledmatrix-channel";
+                reg = <0>;
+                joni,channel = <1>;
+                spi-max-frequency = <6400000>;
+                status = "okay";
+            };
         };
     };
+fragment@2 {
+    target-path = "/axi/pcie@120000/rp1/spi@64000";
 
-    fragment@2 {
-        target = <&spi2>;
-        __overlay__ {
+    __overlay__ {
+        status = "okay";
+        #address-cells = <1>;
+        #size-cells = <0>;
+
+        ledmatrix2: ledmatrix@0 {
+            compatible = "joni,ledmatrix-channel";
+            reg = <0>;
+            joni,channel = <2>;
+            spi-max-frequency = <6400000>;
             status = "okay";
-            pinctrl-names = "default";
-            pinctrl-0 = <&spi2_pins>;
-            num-cs = <1>;
-            dmas = <&dma 20>, <&dma 21>;
-            dma-names = "tx", "rx";
         };
     };
+};
 
-    fragment@3 {
-        target = <&spi3>;
-        __overlay__ {
-            status = "okay";
-            pinctrl-names = "default";
-            pinctrl-0 = <&spi3_pins>;
-            num-cs = <1>;
-            dmas = <&dma 22>, <&dma 23>;
-            dma-names = "tx", "rx";
+fragment@7 {
+    target = <&rp1_gpio>;
+
+    __overlay__ {
+        ledmatrix_spi1_pins: ledmatrix-spi1-pins {
+            spi1-other-pins {
+                function = "spi1";
+                pins = "gpio19", "gpio21";
+                bias-disable;
+            };
+
+            spi1-mosi-pin {
+                function = "spi1";
+                pins = "gpio20";
+                bias-pull-down;
+            };
+        };
+
+        ledmatrix_spi5_pins: ledmatrix-spi5-pins {
+            spi5-pins {
+                function = "spi5";
+                pins = "gpio13", "gpio14", "gpio15";
+                bias-disable;
+            };
         };
     };
+};
 
-    fragment@4 {
-        target = <&gpio>;
+fragment@4 {
+    target-path = "/axi/pcie@120000/rp1/spi@54000";
+
+    __overlay__ {
+        pinctrl-names = "default";
+        pinctrl-0 = <&ledmatrix_spi1_pins>;
+    };
+};
+
+fragment@5 {
+    target-path = "/axi/pcie@120000/rp1/spi@64000";
+
+    __overlay__ {
+        pinctrl-names = "default";
+        pinctrl-0 = <&ledmatrix_spi5_pins>;
+    };
+};
+    fragment@6 {
+        target-path = "/axi/pcie@120000/rp1/spi@50000/spidev@0";
+
         __overlay__ {
-            spi0_pins: spi0_pins {
-                brcm,pins = <10 11>; 
-                brcm,function = <3>;  
-            };
-            spi1_pins: spi1_pins {
-                brcm,pins = <20 21>; 
-                brcm,function = <3>;  
-            };
-            spi2_pins: spi2_pins {
-                brcm,pins = <41 42>; 
-                brcm,function = <3>;   
-            };
-            spi3_pins: spi3_pins {
-                brcm,pins = <5 6>;   
-                brcm,function = <3>;   
-            };
+            status = "disabled";
         };
     };
 };
