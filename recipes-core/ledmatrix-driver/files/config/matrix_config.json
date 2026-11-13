@@ -1,9 +1,8 @@
 {
-    "rows": 5,
-    "cols": 5,
-    "brightness": 255,
-    "serpentine": true,
-    "corner": 2,
-    "direction": "cw",
-    "rotation": 0
+  "tile_rows": 2,
+  "tile_cols": 2,
+  "grid_rows": 2,
+  "grid_cols": 2,
+  "brightness": 255,
+  "rotation": 0
 }
