@@ -1,19 +1,21 @@
 import mqtt from 'mqtt';
 
 class MqttJsonRpc {
-  constructor(brokerUrl) {
+  constructor(brokerUrl, requestTopic = 'engine/request', responseTopic = 'engine/response') {
     this.client = mqtt.connect(brokerUrl);
     this.pendingRequests = new Map();
     this.topicListeners = new Map(); // Stores callbacks per topic filter
     this.requestId = 0;
     this.onConnectionChange = null;
+    this.requestTopic = requestTopic;
+    this.responseTopic = responseTopic;
 
     this.client.on('connect', () => {
       console.log('Connected to MQTT Broker via WebSockets');
       if (this.onConnectionChange) this.onConnectionChange(true);
 
       // Subscribe to the JSON-RPC response topic
-      this.client.subscribe('device/response', (err) => {
+      this.client.subscribe(this.responseTopic, (err) => {
         if (err) console.error('RPC response subscription error:', err);
       });
 
@@ -31,7 +33,7 @@ class MqttJsonRpc {
       const payloadStr = message.toString();
 
       // 1. Handle JSON-RPC 2.0 responses
-      if (topic === 'device/response') {
+      if (topic === this.responseTopic) {
         try {
           const response = JSON.parse(payloadStr);
           if (response.id && this.pendingRequests.has(response.id)) {
@@ -92,7 +94,7 @@ class MqttJsonRpc {
         id,
       });
 
-      this.client.publish('device/request', payload, (err) => {
+      this.client.publish(this.requestTopic, payload, (err) => {
         if (err) {
           clearTimeout(timer);
           this.pendingRequests.delete(id);
@@ -163,6 +165,7 @@ class MqttJsonRpc {
   }
 }
 
-// Export singleton instance using the target device's current hostname
-const brokerUrl = `ws://${window.location.hostname}:9001`;
+// Export singleton instance using the local web server so MQTT over WebSockets
+// is proxied through nginx instead of exposing the broker socket directly.
+const brokerUrl = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.hostname}/mqtt`;
 export const rpcClient = new MqttJsonRpc(brokerUrl);

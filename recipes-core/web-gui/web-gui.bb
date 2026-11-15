@@ -5,11 +5,10 @@ SRC_URI = "file://dist"
 
 S = "${WORKDIR}"
 
-# Skip unnecessary compile/configure tasks
 do_configure[noexec] = "1"
 do_compile[noexec] = "1"
 
-FILES:${PN} += "${datadir}/nginx/html/*"
+FILES:${PN} += "${datadir}/nginx/html"
 
 do_install() {
     install -d ${D}${datadir}/nginx/html

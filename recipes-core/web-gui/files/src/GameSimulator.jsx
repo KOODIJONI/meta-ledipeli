@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { rpcClient } from './mqttRpc.js'
 
-const MATRIX_SIZE_TOPIC = 'device/matrix/size'
-const CAMERA_SIZE_TOPIC = 'device/camera/size'
-const MATRIX_DATA_TOPIC = 'device/matrix/data'
-const MOUSE_EVENT_TOPIC = 'device/mouse'
+const MATRIX_SIZE_TOPIC = 'engine/matrix/size'
+const CAMERA_SIZE_TOPIC = 'engine/camera/size'
+const MATRIX_DATA_TOPIC = 'engine/matrix/data'
+const MOUSE_EVENT_TOPIC = 'engine/mouse'
+const SIMULATOR_STATE_TOPIC = 'engine/simulator/config'
 
 function parseSizeValue(raw) {
   if (!raw) return { width: 0, height: 0 }
@@ -182,11 +183,42 @@ function GameSimulator() {
   const [matrixSize, setMatrixSize] = useState({ width: 0, height: 0 })
   const [cameraSize, setCameraSize] = useState({ width: 0, height: 0 })
   const [matrixData, setMatrixData] = useState([])
+  const [simulateMatrix, setSimulateMatrix] = useState(false)
+  const [simulateInput, setSimulateInput] = useState(false)
+  const [selectedGesture, setSelectedGesture] = useState('pointing')
   const matrixSizeRef = useRef({ width: 0, height: 0 })
 
   useEffect(() => {
     matrixSizeRef.current = matrixSize
   }, [matrixSize])
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.repeat) return
+
+      const key = Number(event.key)
+      if (!Number.isInteger(key) || key < 1) return
+
+      const gestureOptions = [
+        'unknown',
+        'open',
+        'closed',
+        'pointing',
+        'victory',
+        'thumbs_up',
+        'thumbs_down',
+      ]
+
+      const gesture = gestureOptions[key - 1]
+      if (gesture) {
+        event.preventDefault()
+        sendGesture(gesture)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
 
   useEffect(() => {
     const unsubscribeMatrixSize = rpcClient.subscribe(MATRIX_SIZE_TOPIC, (payload) => {
@@ -203,10 +235,46 @@ function GameSimulator() {
       setMatrixData(parseMatrixData(payload, matrixSizeRef.current.width, matrixSizeRef.current.height))
     })
 
+    const unsubscribeSimulatorState = rpcClient.subscribe(SIMULATOR_STATE_TOPIC, (payload) => {
+      try {
+        const nextState =
+          typeof payload === 'string'
+            ? JSON.parse(payload)
+            : ArrayBuffer.isView(payload) || payload instanceof ArrayBuffer
+              ? JSON.parse(new TextDecoder().decode(payload))
+              : payload
+        const state = nextState && typeof nextState === 'object' ? nextState : {}
+
+        if (state.camera && state.camera.width && state.camera.height) {
+          setCameraSize({
+            width: Number(state.camera.width),
+            height: Number(state.camera.height),
+          })
+        }
+        if (typeof state.simulateMatrix === 'boolean') {
+          setSimulateMatrix(state.simulateMatrix)
+        }
+        if (typeof state.simulateInput === 'boolean') {
+          setSimulateInput(state.simulateInput)
+        }
+        if (state.matrix && (state.matrix.width || state.matrix.height)) {
+          const nextSize = {
+            width: Number(state.matrix.width ?? matrixSizeRef.current.width ?? 0),
+            height: Number(state.matrix.height ?? matrixSizeRef.current.height ?? 0),
+          }
+          setMatrixSize(nextSize)
+          matrixSizeRef.current = nextSize
+        }
+      } catch (error) {
+        console.warn('simulator config parse failed', error)
+      }
+    })
+
     return () => {
       unsubscribeMatrixSize()
       unsubscribeCameraSize()
       unsubscribeMatrixData()
+      unsubscribeSimulatorState()
     }
   }, [])
 
@@ -241,14 +309,7 @@ function GameSimulator() {
     const cameraX = Math.round(normalizedX * cameraSize.width)
     const cameraY = Math.round(normalizedY * cameraSize.height)
 
-    const gesture =
-      event.type === 'pointerdown'
-        ? 'down'
-        : event.type === 'pointermove'
-          ? 'move'
-          : event.type === 'pointerup'
-            ? 'up'
-            : 'move'
+    const gesture = selectedGesture || 'pointing'
 
     try {
       await rpcClient.publish(MOUSE_EVENT_TOPIC, {
@@ -264,9 +325,130 @@ function GameSimulator() {
   const visibleRows = matrixData.length
   const visibleCols = matrixData[0]?.length ?? 0
 
+  const toggleSimulation = async (type, checked) => {
+    const methodNames = {
+      matrix: ['simulateMatrix', 'simulate_matrix'],
+      input: ['simulateInput', 'simulate_input'],
+    }
+
+    const methods = methodNames[type] ?? []
+    let lastError = null
+
+    try {
+      for (const method of methods) {
+        try {
+          await rpcClient.call(method, { enabled: checked })
+          return
+        } catch (error) {
+          lastError = error
+        }
+      }
+
+      console.warn(`Simulation ${type} failed: ${lastError?.message ?? 'Unknown error'}`)
+    } catch (error) {
+      console.warn(`Simulation ${type} failed: ${error.message}`)
+    }
+
+    if (type === 'matrix') {
+      setSimulateMatrix(checked)
+    } else {
+      setSimulateInput(checked)
+    }
+  }
+
+  const gestureOptions = [
+    'unknown',
+    'open',
+    'closed',
+    'pointing',
+    'victory',
+    'thumbs_up',
+    'thumbs_down',
+  ]
+
+  const sendGesture = async (gesture) => {
+    setSelectedGesture(gesture)
+
+    try {
+      await rpcClient.publish(MOUSE_EVENT_TOPIC, {
+        x: 0,
+        y: 0,
+        gesture,
+      })
+      return
+    } catch (error) {
+      console.warn('Gesture publish failed:', error)
+    }
+
+    const methodNames = ['setGesture', 'set_gesture']
+    let lastError = null
+
+    for (const method of methodNames) {
+      try {
+        await rpcClient.call(method, { gesture })
+        return
+      } catch (error) {
+        lastError = error
+      }
+    }
+
+    console.warn(`Gesture send failed: ${lastError?.message ?? 'Unknown error'}`)
+  }
+
   return (
     <main>
       <h1>Game Simulator</h1>
+
+      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+        <label>
+          <input
+            type="checkbox"
+            checked={simulateMatrix}
+            onChange={async (event) => {
+              const checked = event.target.checked
+              setSimulateMatrix(checked)
+              await toggleSimulation('matrix', checked)
+            }}
+          />
+          Simulate matrix
+        </label>
+
+        <label>
+          <input
+            type="checkbox"
+            checked={simulateInput}
+            onChange={async (event) => {
+              const checked = event.target.checked
+              setSimulateInput(checked)
+              await toggleSimulation('input', checked)
+            }}
+          />
+          Simulate input
+        </label>
+      </div>
+
+      <div style={{ marginBottom: '1rem' }}>
+        <div style={{ marginBottom: '0.5rem' }}><strong>Gesture:</strong> {selectedGesture}</div>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          {gestureOptions.map((gesture) => (
+            <button
+              key={gesture}
+              type="button"
+              onClick={() => sendGesture(gesture)}
+              style={{
+                padding: '0.35rem 0.65rem',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                background: selectedGesture === gesture ? '#2563eb' : '#1f2937',
+                color: '#fff',
+                border: '1px solid #374151',
+              }}
+            >
+              {gesture}
+            </button>
+          ))}
+        </div>
+      </div>
 
       <div>
         <strong>Matrix:</strong> {matrixSize.width} x {matrixSize.height}
