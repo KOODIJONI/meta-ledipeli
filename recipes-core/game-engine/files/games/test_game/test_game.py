@@ -3,8 +3,8 @@ import os
 from games.base_game import BaseGame, Gesture
 
 class MatrixGame(BaseGame):
-    def __init__(self, socket_path=None, config=None):
-        super().__init__(socket_path=socket_path, config=config)
+    def __init__(self, config=None, mqtt_client=None):
+        super().__init__(config=config, mqtt_client=mqtt_client)
         print(f"[MatrixGame] Initialized matrix grid size: {self.rows} rows x {self.cols} cols")
         print(f"[MatrixGame] Window size: {self.width}x{self.height}")
 
