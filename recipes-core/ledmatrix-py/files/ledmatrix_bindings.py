@@ -100,6 +100,12 @@ _lib.MatrixGetSize.argtypes = [
 ]
 _lib.MatrixGetSize.restype = ctypes.c_int
 
+_lib.MatrixUndoTransformation.argtypes = [
+    ctypes.POINTER(Matrix),
+    ctypes.POINTER(RgbColor),
+]
+_lib.MatrixUndoTransformation.restype = ctypes.c_int
+
 _lib.BufferRequiredSamples.argtypes = [ctypes.POINTER(Matrix)]
 _lib.BufferRequiredSamples.restype = ctypes.c_size_t
 

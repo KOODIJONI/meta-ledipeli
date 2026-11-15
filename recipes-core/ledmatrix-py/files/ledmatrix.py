@@ -76,6 +76,24 @@ class LEDMatrix:
     color = RgbColor(r, g, b)
     return _lib.MatrixWriteAll(ctypes.byref(self._matrix), color)
 
+  def get_raw_frame(self):
+    rows = ctypes.c_int()
+    cols = ctypes.c_int()
+    ret = _lib.MatrixGetSize(ctypes.byref(self._matrix), ctypes.byref(rows), ctypes.byref(cols))
+    if ret != OK:
+      raise RuntimeError(f"Failed to get logical matrix size: error code {ret}")
+
+    logical_size = rows.value * cols.value
+    logical_buffer = (RgbColor * logical_size)()
+    ret = _lib.MatrixUndoTransformation(ctypes.byref(self._matrix), logical_buffer)
+    if ret != OK:
+      raise RuntimeError(f"Failed to undo matrix transformation: error code {ret}")
+
+    blob = bytearray()
+    for pixel in logical_buffer:
+      blob.extend((pixel.g, pixel.r, pixel.b))
+    return bytes(blob)
+
   def flush(self):
     """Encodes matrix pixels into SPI waveform buffer and writes to kernel driver"""
     ret = _lib.MatrixToBuffer(ctypes.byref(self._matrix), ctypes.byref(self._buffer))
