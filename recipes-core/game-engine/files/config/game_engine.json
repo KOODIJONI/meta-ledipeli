@@ -11,7 +11,7 @@
     },
     "startup": {
         "initial_game": "test_game",
-        "available_games": ["test_game","tetris", "pong", "touch"]  
+        "available_games": ["test_game","tetris", "pong", "touch", "breakout"]  
     },
 
     "tetris": {

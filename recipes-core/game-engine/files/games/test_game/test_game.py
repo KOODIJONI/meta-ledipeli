@@ -1,6 +1,6 @@
 # games/matrix_game/matrix_game.py
 import os
-from games.base_game import BaseGame
+from games.base_game import BaseGame, Gesture
 
 class MatrixGame(BaseGame):
     def __init__(self, socket_path=None, config=None):
@@ -14,6 +14,7 @@ class MatrixGame(BaseGame):
         self.last_cursor_y = 0
         self.has_hand = False
         self.grid = [["." for _ in range(self.cols)] for _ in range(self.rows)]
+        self.gesture = Gesture.UNKNOWN
 
     def handle_input(self, hand_state):
         pos = self.get_hand_position(hand_state, index=0)
@@ -27,35 +28,33 @@ class MatrixGame(BaseGame):
         else:
             self.has_hand = False
 
-    def update(self):
-        """Compute the current matrix state from tracked hand position."""
-        self.grid = [["." for _ in range(self.cols)] for _ in range(self.rows)]
+        self.gesture = self.get_hand_gesture(hand_state)
 
+    def render(self):
+        self.render_player()
+    def render_player(self):
         if self.has_hand:
             cx = min(max(self.cursor_x, 0), self.cols - 1)
             cy = min(max(self.cursor_y, 0), self.rows - 1)
-            self.grid[cy][cx] = "#"
+            if self.gesture == Gesture.OPEN:
+                self.set_led_pixel(cx, cy, 0, 0, 255)
+            elif self.gesture == Gesture.CLOSED:
+                self.set_led_pixel(cx, cy, 0, 255, 0)
+            elif self.gesture == Gesture.POINTING:
+                self.set_led_pixel(cx, cy, 255, 0, 0)
+            elif self.gesture == Gesture.VICTORY:
+                self.set_led_pixel(cx, cy, 255, 255, 0)
+            elif self.gesture == Gesture.THUMBS_UP:
+                self.set_led_pixel(cx, cy, 255, 140, 0)
+            elif self.gesture == Gesture.THUMBS_DOWN:
+                self.set_led_pixel(cx, cy, 115, 235, 172)
+            else:
+                self.set_led_pixel(cx, cy, 0, 30, 30)
+
             self.last_cursor_x = cx
             self.last_cursor_y = cy
         elif self.last_cursor_x is not None and self.last_cursor_y is not None:
             cx = min(max(self.last_cursor_x, 0), self.cols - 1)
             cy = min(max(self.last_cursor_y, 0), self.rows - 1)
-            self.grid[cy][cx] = "#"
+            self.set_led_pixel(cx, cy, 30, 30, 30)
 
-    def render(self):
-        """Render the matrix grid to the physical LED display, with console fallback."""
-        if self.led_matrix is not None:
-            for y, row in enumerate(self.grid):
-                for x, cell in enumerate(row):
-                    if cell == "#":
-                        self.set_led_pixel(x, y, 255, 255, 255)
-                        print(f"Set Pixel {x} {y}")
-            return
-
-        os.system('cls' if os.name == 'nt' else 'clear')
-
-        border = "+" + "-" * self.cols + "+"
-        print(border)
-        for row in self.grid:
-            print("|" + "".join(row) + "|")
-        print(border)

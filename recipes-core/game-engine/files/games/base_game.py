@@ -15,6 +15,9 @@ class Gesture(Enum):
     OPEN = "open"
     CLOSED = "closed"
     POINTING = "pointing"
+    VICTORY = "victory"
+    THUMBS_UP = "thumbs_up"
+    THUMBS_DOWN = "thumbs_down"
 
 
 class BaseGame:
@@ -63,10 +66,47 @@ class BaseGame:
         """Return the last known gesture for a specific hand if available."""
         hands = hand_state.get("hands", []) if isinstance(hand_state, dict) else []
         if index >= len(hands):
-            return Gesture.UNKNOWN.value
+            return Gesture.UNKNOWN
 
         hand = hands[index]
-        return str(hand.get("gesture", Gesture.UNKNOWN.value)).lower()
+        gesture = hand.get("gesture", Gesture.UNKNOWN.value) if isinstance(hand, dict) else Gesture.UNKNOWN.value
+        print(f"[DEBUG] Raw hand gesture for index {index}: {gesture!r}")
+
+        if isinstance(gesture, Gesture):
+            return gesture
+
+        if hasattr(gesture, "value"):
+            gesture = gesture.value
+
+        normalized = str(gesture).strip().lower()
+        normalized = normalized.replace("-", "_").replace(" ", "_")
+
+        aliases = {
+            "unknown": Gesture.UNKNOWN,
+            "none": Gesture.UNKNOWN,
+            "open": Gesture.OPEN,
+            "open_palm": Gesture.OPEN,
+            "open_hand": Gesture.OPEN,
+            "closed": Gesture.CLOSED,
+            "closed_fist": Gesture.CLOSED,
+            "fist": Gesture.CLOSED,
+            "pointing": Gesture.POINTING,
+            "pointing_up": Gesture.POINTING,
+            "point_up": Gesture.POINTING,
+            "thumb_up": Gesture.THUMBS_UP,
+            "thumb_down": Gesture.THUMBS_DOWN,
+            "victory" : Gesture.VICTORY
+            
+        }
+
+        if normalized in aliases:
+            return aliases[normalized]
+
+        for candidate in Gesture:
+            if candidate.value == normalized:
+                return candidate
+
+        return Gesture.UNKNOWN
 
     def _init_led_matrix(self):
         """Initialize the hardware LED matrix when the driver is available."""
