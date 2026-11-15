@@ -29,6 +29,7 @@ IMAGE_INSTALL:append = " \
     ledmatrix-driver \
     ledmatrix-py \
     game-engine \
+    mosquitto \
 "
 ENABLE_SPI_BUS = "1"
 
