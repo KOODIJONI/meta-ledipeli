@@ -294,12 +294,6 @@ int32_t MatrixGetPixelIndex(const Matrix *m, uint8_t x, uint8_t y)
     const int32_t tile = ty * m->grid_cols + tx;
     const int32_t tile_pixels = (int32_t)m->tile_rows * m->tile_cols;
 
-    /* Inside each tile, pixels are stored row-major in x/y order:
-     * index = local_y * tile_cols + local_x
-     * This must be used instead of the transposed form that accidentally
-     * multiplies x by tile_rows. That transposed form only looks correct
-     * for square tiles like 8x8, but breaks when the panel topology is
-     * arranged as multiple tiles across a row/column. */
     return tile * tile_pixels + ly * m->tile_cols + lx;
 }
 
@@ -493,4 +487,28 @@ void MatrixFree(Matrix *m)
 
     free(m->colors);
     m->colors = NULL;
+}
+
+int MatrixUndoTransformation(const Matrix *m, RgbColor *out_logical_buffer)
+{
+    if (MatrixValidate(m) != OK || out_logical_buffer == NULL) {
+        return ERROR_NULL_POINTER;
+    }
+
+    int logical_w = MatrixLogicalW(m);
+    int logical_h = MatrixLogicalH(m);
+
+    for (int y = 0; y < logical_h; y++) {
+        for (int x = 0; x < logical_w; x++) {
+            int32_t physical_idx = MatrixGetPixelIndex(m, (uint8_t)x, (uint8_t)y);
+            if (physical_idx < 0) {
+                return physical_idx;
+            }
+            
+            int logical_idx = y * logical_w + x;
+            out_logical_buffer[logical_idx] = m->colors[physical_idx];
+        }
+    }
+
+    return OK;
 }

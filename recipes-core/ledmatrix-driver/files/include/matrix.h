@@ -101,4 +101,6 @@ int MatrixGetSize(Matrix *m, int *rows, int *cols);           /* logical size (a
 int MatrixSwapBuffers(Matrix **write, Matrix **read);
 void MatrixFree(Matrix *m);
 
+int MatrixUndoTransformation(const Matrix *m, RgbColor *out_logical_buffer);
+
 #endif // MATRIX_H
