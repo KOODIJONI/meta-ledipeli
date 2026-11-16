@@ -1,13 +1,17 @@
 import mqttClient as mqtt
 
-testClient = mqtt.MqttClient("client_id/", "topic/", "payload")
+publisher = mqtt.MqttPublisher("TestClient/", "newTopic/", "payload")
+listener = mqtt.MqttListener(publisher.client_id, "newTopic/score")
 
-testClient.start_loop('localhost', 1883, 60)
+publisher.start_loop('localhost', 1883, 60)
+listener.start_loop('localhost', 1883, 60)
 
 while True:
     try:
-        testClient.payloadPublish = input()
-        testClient.publish(1)
+        print(f"Listener payload: {listener.payload}")
+        publisher.payload = input()
+        publisher.publish(publisher.get_topic() + "subTopic" ,1)
     except KeyboardInterrupt: # exits on ^C 
         break
-testClient.end_loop()
+publisher.end_loop()
+listener.end_loop()
