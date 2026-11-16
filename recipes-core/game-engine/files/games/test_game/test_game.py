@@ -1,6 +1,6 @@
 # games/matrix_game/matrix_game.py
 import os
-from games.base_game import BaseGame, Gesture
+from base_game.base_game import BaseGame, Gesture
 
 class MatrixGame(BaseGame):
     def __init__(self, config=None, mqtt_client=None):
