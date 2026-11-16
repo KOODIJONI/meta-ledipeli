@@ -14,6 +14,7 @@ SRC_URI = " \
     file://games \
     file://config/game_engine.json \
     file://game-engine.service \
+    file://base_game \
 "
 
 S = "${WORKDIR}"
@@ -33,6 +34,7 @@ do_install() {
     install -m 0644 ${WORKDIR}/parse_arg.py ${D}${bindir}/game-engine/parse_arg.py
 
     cp -r ${WORKDIR}/games ${D}${bindir}/game-engine/
+    cp -r ${WORKDIR}/base_game ${D}${bindir}/game-engine/
 
     install -d ${D}${sysconfdir}/game-engine
     install -m 0644 ${WORKDIR}/config/game_engine.json ${D}${sysconfdir}/game-engine/game_engine.json
