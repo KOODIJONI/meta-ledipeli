@@ -1,10 +1,10 @@
 # games/tetris/tetris.py
-from games.base_game import BaseGame
+from base_game.base_game import BaseGame
 
 
 class Tetris(BaseGame):
-    def __init__(self, config=None):
-        super().__init__(config=config)
+    def __init__(self, config=None, mqtt_client=None):
+        super().__init__(config=config, mqtt_client=mqtt_client)
         self.score = 0
 
         config = config or {}
