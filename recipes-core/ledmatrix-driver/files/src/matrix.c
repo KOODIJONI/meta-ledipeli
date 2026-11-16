@@ -19,7 +19,18 @@ static inline int32_t MatrixLogicalH(const Matrix *m)
     return (m->rotation == ROTATION_90 || m->rotation == ROTATION_270) ? m->cols : m->rows;
 }
 
-/* ---------- init ---------- */
+Matrix *MatrixCreate(const char *json_path)
+{
+    Matrix *m = calloc(1, sizeof(Matrix));
+    if (m == NULL)
+        return NULL;
+
+    if (MatrixInitWithJson(m, json_path) != OK) {
+        free(m);
+        return NULL;
+    }
+    return m;
+}
 
 int MatrixInit(Matrix *m, const MatrixConfig *config)
 {
@@ -480,6 +491,14 @@ int MatrixSwapBuffers(Matrix **write, Matrix **read)
     return OK;
 }
 
+void MatrixDestroy(Matrix *m)
+{
+    if (m == NULL)
+        return;
+
+    MatrixFree(m);   
+    free(m);         
+}
 void MatrixFree(Matrix *m)
 {
     if (m == NULL)

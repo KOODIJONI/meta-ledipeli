@@ -69,6 +69,7 @@ typedef struct {
 } MatrixConfig;
 
 //init functions
+Matrix *MatrixCreate(const char *json_path);  
 int MatrixInit(Matrix *m, const MatrixConfig *config);
 int MatrixInitWithJson(Matrix *m, const char *json_path);
 int MatrixValidate(const Matrix *m);
@@ -100,6 +101,8 @@ int MatrixGetSize(Matrix *m, int *rows, int *cols);           /* logical size (a
 //render functions
 int MatrixSwapBuffers(Matrix **write, Matrix **read);
 void MatrixFree(Matrix *m);
+void MatrixDestroy(Matrix *m);              
+
 
 int MatrixUndoTransformation(const Matrix *m, RgbColor *out_logical_buffer);
 
