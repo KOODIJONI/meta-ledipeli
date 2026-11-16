@@ -126,3 +126,8 @@ _lib.BufferSendToKernel.restype = ctypes.c_int
 
 _lib.BufferMatrixDriverClose.argtypes = []
 _lib.BufferMatrixDriverClose.restype = None
+
+_lib.MatrixCreate.argtypes = [ctypes.c_char_p]
+_lib.MatrixCreate.restype = ctypes.POINTER(Matrix)   
+_lib.MatrixDestroy.argtypes = [ctypes.POINTER(Matrix)]
+_lib.MatrixDestroy.restype = None
