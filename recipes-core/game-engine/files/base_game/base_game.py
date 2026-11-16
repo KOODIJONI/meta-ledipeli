@@ -1,4 +1,4 @@
-# games/base_game.py
+#base_game/base_game.py
 from __future__ import annotations
 
 import time
@@ -11,8 +11,9 @@ except ImportError:  # pragma: no cover - hardware module may be absent in dev/t
     LEDMatrix = None
 
 from config import get_hand_tracker_socket, get_matrix_size, get_window_size
+from .game_mqtt_bridge import GameMqttBridge
 from hand_client import HandTrackerClient
-from mqtt_client import AggregatedMqttClient
+
 
 class Gesture(Enum):
     UNKNOWN = "unknown"
@@ -36,24 +37,21 @@ class BaseGame:
         # Own copy of the frame (GRB, row-major) for the browser simulator,
         # because the driver's get_raw_frame() fails with error code -2.
         self._shadow = bytearray(self.rows * self.cols * 3)
+        debug_cfg = self.config.get("debug", {}) if isinstance(self.config, dict) else {}
 
-        engine_cfg = self.config.get("engine", {}) if isinstance(self.config, dict) else {}
-        self.simulate_matrix_enabled = bool(engine_cfg.get("simulate", False))
-        self.simulate_input_enabled = bool(engine_cfg.get("simulate_input", False))
+        self.debug_enabled = bool(debug_cfg.get("show_fps", False) or debug_cfg.get("debug", False))
+        self._fps_window_start = time.monotonic()
+        self._fps_frame_count = 0
 
         self.state_prefix = state_prefix
-        self.shared_state: dict[str, Any] = {}
-        self.mqtt = None
-        self._mqtt_client = mqtt_client
-        self._unsub_mouse = None
-        self._last_sim_error_time = 0.0
-        self._simulated_mouse = {
-            "x": 0.5,
-            "y": 0.5,
-            "gesture": Gesture.POINTING.value,
-        }
-        self._simulated_hand_state = self._build_simulated_hand_state(self._simulated_mouse)
-        self._init_mqtt_client(broker_url=mqtt_broker)
+        self._mqtt_bridge = GameMqttBridge(
+            config=self.config,
+            state_prefix=state_prefix,
+            mqtt_client=mqtt_client,
+            broker_url=mqtt_broker,
+            width=self.width,
+            height=self.height,
+        )
 
         self.led_matrix = None
         self._init_led_matrix()
@@ -62,120 +60,49 @@ class BaseGame:
         self.tracker = HandTrackerClient(socket_path=str(socket_path))
         self.running = True
 
-    def _init_mqtt_client(self, broker_url=None):
-        """Initialize an optional shared MQTT pub/sub bridge for cross-instance state."""
-        if self._mqtt_client is not None:
-            self.mqtt = self._mqtt_client
-            self._attach_simulated_input_listener()
-            return self.mqtt
+    # -- MQTT passthroughs (kept so child games' existing calls keep working) --
 
-        mqtt_cfg = self.config.get("mqtt", {}) if isinstance(self.config, dict) else {}
-        broker_url = broker_url or mqtt_cfg.get("broker_url") or mqtt_cfg.get("broker")
-        if not broker_url:
-            return None
+    @property
+    def mqtt(self):
+        return self._mqtt_bridge.client
 
-        enabled = bool(mqtt_cfg.get("enabled", True))
-        if not enabled:
-            return None
+    @property
+    def shared_state(self) -> dict[str, Any]:
+        return self._mqtt_bridge.shared_state
 
-        try:
-            self.mqtt = AggregatedMqttClient(broker_url=str(broker_url), client_id=f"game-{id(self)}")
-            self._attach_simulated_input_listener()
-            print(f"[BASE] MQTT client ready: {broker_url}")
-            return self.mqtt
-        except Exception as exc:  # pragma: no cover - optional external service
-            print(f"[BASE] MQTT unavailable ({exc}); continuing without it.")
-            self.mqtt = None
-            return None
+    @property
+    def simulate_matrix_enabled(self) -> bool:
+        return self._mqtt_bridge.simulate_matrix_enabled
 
-    def _attach_simulated_input_listener(self):
-        if self.mqtt is None:
-            return
+    @property
+    def simulate_input_enabled(self) -> bool:
+        return self._mqtt_bridge.simulate_input_enabled
 
-        def _on_mouse_message(message, topic):
-            if not self.simulate_input_enabled:
-                return
+    def set_shared_state(self, key: str, value: Any):
+        return self._mqtt_bridge.set_shared_state(key, value)
 
-            payload = message
-            if isinstance(payload, (bytes, bytearray)):
-                payload = payload.decode("utf-8", errors="ignore")
+    def get_shared_state(self, key: str, default: Any = None):
+        return self._mqtt_bridge.get_shared_state(key, default)
 
-            try:
-                if isinstance(payload, str):
-                    parsed = __import__("json").loads(payload)
-                else:
-                    parsed = payload
-            except Exception:
-                return
+    def publish_state(self, payload: Any | None = None, topic: str | None = None):
+        return self._mqtt_bridge.publish_state(payload, topic)
 
-            if not isinstance(parsed, dict):
-                return
+    def subscribe_to_state(self, topic: str, callback: Callable[[Any, str], None]):
+        return self._mqtt_bridge.subscribe_to_state(topic, callback)
 
-            x = float(parsed.get("x", self._simulated_mouse.get("x", 0.5)))
-            y = float(parsed.get("y", self._simulated_mouse.get("y", 0.5)))
-            # The web GUI sends camera pixels; convert to normalized 0..1.
-            if x > 1.0 or y > 1.0:
-                x /= float(self.width)
-                y /= float(self.height)
+    def call_rpc(self, method: str, params: Any | None = None, timeout_ms: int = 5000):
+        return self._mqtt_bridge.call_rpc(method, params=params, timeout_ms=timeout_ms)
 
-            self._simulated_mouse = {
-                "x": x,
-                "y": y,
-                "gesture": str(parsed.get("gesture", self._simulated_mouse.get("gesture", Gesture.POINTING.value))),
-            }
-            self._simulated_hand_state = self._build_simulated_hand_state(self._simulated_mouse)
+    def publish_simulated_matrix(self):
+        """Publish the current frame in raw GRB bytes for the browser simulator."""
+        return self._mqtt_bridge.publish_matrix(bytes(self._shadow), self.cols, self.rows)
 
-        self._unsub_mouse = self.mqtt.subscribe("engine/mouse", _on_mouse_message)
-
-    def _build_simulated_hand_state(self, mouse_state):
-        if not isinstance(mouse_state, dict):
-            mouse_state = self._simulated_mouse
-
-        x = float(mouse_state.get("x", 0.5))
-        y = float(mouse_state.get("y", 0.5))
-        gesture = mouse_state.get("gesture", Gesture.POINTING.value)
-
-        normalized_x = min(max(x, 0.0), 1.0)
-        normalized_y = min(max(y, 0.0), 1.0)
-
-        return {
-            "hands": [{
-                "wrist": {"x": normalized_x, "y": normalized_y},
-                "gesture": str(gesture).strip().lower(),
-            }]
-        }
+    # -- Hand input -----------------------------------------------------------
 
     def _get_latest_hand_state(self):
         if self.simulate_input_enabled:
-            return self._simulated_hand_state
+            return self._mqtt_bridge.simulated_hand_state
         return self.tracker.get_latest_state()
-
-    def set_shared_state(self, key: str, value: Any):
-        self.shared_state[key] = value
-        if self.mqtt is not None:
-            self.mqtt.publish_state(f"{self.state_prefix}/{key}", value)
-        return value
-
-    def get_shared_state(self, key: str, default: Any = None):
-        return self.shared_state.get(key, default)
-
-    def publish_state(self, payload: Any | None = None, topic: str | None = None):
-        if payload is None:
-            payload = self.shared_state
-        target_topic = topic or f"{self.state_prefix}/state"
-        if self.mqtt is not None:
-            self.mqtt.publish_state(target_topic, payload)
-        return payload
-
-    def subscribe_to_state(self, topic: str, callback: Callable[[Any, str], None]):
-        if self.mqtt is None:
-            return None
-        return self.mqtt.subscribe_state(topic, callback)
-
-    def call_rpc(self, method: str, params: Any | None = None, timeout_ms: int = 5000):
-        if self.mqtt is None:
-            raise RuntimeError("MQTT JSON-RPC client is not configured")
-        return self.mqtt.call(method, params=params, timeout_ms=timeout_ms)
 
     def get_display_size(self):
         return self.width, self.height
@@ -235,8 +162,7 @@ class BaseGame:
             "point_up": Gesture.POINTING,
             "thumb_up": Gesture.THUMBS_UP,
             "thumb_down": Gesture.THUMBS_DOWN,
-            "victory" : Gesture.VICTORY
-            
+            "victory": Gesture.VICTORY,
         }
 
         if normalized in aliases:
@@ -247,6 +173,8 @@ class BaseGame:
                 return candidate
 
         return Gesture.UNKNOWN
+
+    # -- LED matrix -----------------------------------------------------------
 
     def _init_led_matrix(self):
         """Initialize the hardware LED matrix when the driver is available."""
@@ -307,29 +235,7 @@ class BaseGame:
         except Exception:
             return False
 
-    def publish_simulated_matrix(self):
-        """Publish the current frame in raw GRB bytes for the browser simulator."""
-        if self.mqtt is None:
-            return False
-
-        if not self.simulate_matrix_enabled:
-            return False
-
-        try:
-            frame = bytes(self._shadow)
-            size_payload = {
-                "width": int(self.cols),
-                "height": int(self.rows),
-            }
-            self.mqtt.publish("engine/matrix/size", size_payload)
-            self.mqtt.publish("engine/matrix/data", frame)
-            return True
-        except Exception as exc:  # pragma: no cover - runtime hardware path only
-            now = time.time()
-            if now - self._last_sim_error_time > 5.0:
-                self._last_sim_error_time = now
-                print(f"[BASE] Failed to publish simulated matrix frame: {exc}")
-            return False
+    # -- Game loop ------------------------------------------------------------
 
     def handle_input(self, hand_state):
         """Override this in child games to process hand gestures/coordinates."""
@@ -345,29 +251,54 @@ class BaseGame:
 
     def run(self, fps=60):
         """Main game loop shared across all games."""
-        print(f"[BASE] Starting game loop... Press Ctrl+C to exit.")
+        print("[BASE] Starting game loop... Press Ctrl+C to exit.")
         frame_delay = 1.0 / fps
 
         try:
             while self.running:
-                start_time = time.time()
+                start = time.monotonic()
 
+                t0 = time.monotonic()
                 hand_state = self._get_latest_hand_state()
-                
                 if hand_state:
                     self.handle_input(hand_state)
+                input_time = time.monotonic() - t0
 
+                t0 = time.monotonic()
                 self.update()
+                update_time = time.monotonic() - t0
 
+                t0 = time.monotonic()
                 self.clear_led_matrix()
                 self.render()
+                render_time = time.monotonic() - t0
 
+                t0 = time.monotonic()
                 self.publish_simulated_matrix()
-                self.flush_led_matrix()
+                mqtt_time = time.monotonic() - t0
 
-                elapsed = time.time() - start_time
-                if elapsed < frame_delay:
-                    time.sleep(frame_delay - elapsed)
+                t0 = time.monotonic()
+                flush_result = self.flush_led_matrix()
+                flush_time = time.monotonic() - t0
+
+                total_time = time.monotonic() - start
+
+                if self.config.get("debug", {}).get("show_fps", False):
+                    print(
+                        f"[TIMING] input={input_time*1000:.1f}ms "
+                        f"update={update_time*1000:.1f}ms "
+                        f"render={render_time*1000:.1f}ms "
+                        f"mqtt={mqtt_time*1000:.1f}ms "
+                        f"flush={flush_time*1000:.1f}ms "
+                        f"total={total_time*1000:.1f}ms "
+                        f"flush_result={flush_result}"
+                    )
+                    self._update_debug_fps(flush_result)
+
+                frame_delay = 1.0 / fps
+                remaining = frame_delay - total_time
+                if remaining > 0:
+                    time.sleep(remaining)
 
         except KeyboardInterrupt:
             print("\n[BASE] Stopping game...")
@@ -384,19 +315,30 @@ class BaseGame:
             except Exception:
                 pass
 
-        if self._unsub_mouse is not None:
-            try:
-                self._unsub_mouse()
-            except Exception:
-                pass
-            self._unsub_mouse = None
-
-        # Only stop the MQTT client if this game created it; a client passed
-        # in by GameManager is shared and must stay alive across game changes.
-        if self.mqtt is not None and self._mqtt_client is None:
-            try:
-                self.mqtt.stop()
-            except Exception:
-                pass
+        self._mqtt_bridge.stop()
 
         print("[BASE] Tracker stopped. Exiting cleanly.")
+
+    def set_simulate_matrix(self, enabled: bool):
+        return self._mqtt_bridge.set_simulate_matrix_enabled(enabled)
+
+    def set_simulate_input(self, enabled: bool):
+        return self._mqtt_bridge.set_simulate_input_enabled(enabled)
+
+    def get_simulation_settings(self):
+        return self._mqtt_bridge.get_simulation_settings()
+
+    def _update_debug_fps(self, frame_succeeded: bool):
+        if not self.debug_enabled:
+            return
+
+        if not frame_succeeded:
+            return
+
+        self._fps_frame_count += 1
+        elapsed = time.monotonic() - self._fps_window_start
+        if elapsed >= 1.0:
+            fps = self._fps_frame_count / elapsed
+            print(f"[DEBUG] FPS: {fps:.1f}")
+            self._fps_window_start = time.monotonic()
+            self._fps_frame_count = 0
