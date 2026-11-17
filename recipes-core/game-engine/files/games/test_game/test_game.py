@@ -1,10 +1,16 @@
 # games/matrix_game/matrix_game.py
-import os
 from base_game.base_game import BaseGame, Gesture
 
 class MatrixGame(BaseGame):
-    def __init__(self, config=None, mqtt_client=None):
-        super().__init__(config=config, mqtt_client=mqtt_client)
+    def __init__(self, socket_path=None, config=None, mqtt_client=None, mqtt_broker=None, state_prefix: str = "game", tracker=None):
+        super().__init__(
+            socket_path=socket_path,
+            config=config,
+            mqtt_client=mqtt_client,
+            mqtt_broker=mqtt_broker,
+            state_prefix=state_prefix,
+            tracker=tracker
+        )
         print(f"[MatrixGame] Initialized matrix grid size: {self.rows} rows x {self.cols} cols")
         print(f"[MatrixGame] Window size: {self.width}x{self.height}")
 
@@ -31,7 +37,10 @@ class MatrixGame(BaseGame):
         self.gesture = self.get_hand_gesture(hand_state)
 
     def render(self):
+        self.fill_rect(0,0,self.cols-1,1,100,0,0)
+        self.draw_line(0,0,self.cols-1,self.rows-1,0,100,100)
         self.render_player()
+
     def render_player(self):
         if self.has_hand:
             cx = min(max(self.cursor_x, 0), self.cols - 1)
