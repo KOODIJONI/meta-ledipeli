@@ -10,10 +10,10 @@ try:
 except ImportError:  # pragma: no cover - hardware module may be absent in dev/test envs
     LEDMatrix = None
 
-from config import get_hand_tracker_socket, get_matrix_size, get_window_size
+from config import get_hand_tracker_socket, get_matrix_size, get_window_size, get_hand_tracker_socket
 from .game_mqtt_bridge import GameMqttBridge
 from hand_client import HandTrackerClient
-
+from base_game.animation_player import RawBinAnimationPlayer
 
 class Gesture(Enum):
     UNKNOWN = "unknown"
@@ -24,24 +24,39 @@ class Gesture(Enum):
     THUMBS_UP = "thumbs_up"
     THUMBS_DOWN = "thumbs_down"
 
+aliases = {
+    "unknown": Gesture.UNKNOWN,
+    "none": Gesture.UNKNOWN,
+    "open": Gesture.OPEN,
+    "open_palm": Gesture.OPEN,
+    "open_hand": Gesture.OPEN,
+    "closed": Gesture.CLOSED,
+    "closed_fist": Gesture.CLOSED,
+    "fist": Gesture.CLOSED,
+    "pointing": Gesture.POINTING,
+    "pointing_up": Gesture.POINTING,
+    "point_up": Gesture.POINTING,
+    "thumb_up": Gesture.THUMBS_UP,
+    "thumb_down": Gesture.THUMBS_DOWN,
+    "victory": Gesture.VICTORY,
+}
+
 
 class BaseGame:
-    def __init__(self, socket_path=None, config=None, mqtt_client=None, mqtt_broker=None, state_prefix: str = "game"):
-        """Shared game initialization: boots up the hand tracker client once."""
+    def __init__(self, socket_path=None, config=None, mqtt_client=None, mqtt_broker=None, state_prefix: str = "game", tracker=None):
+        """Shared game initialization: accepts a shared hand tracker client."""
         self.config = config or {}
-        if socket_path is None:
-            socket_path = get_hand_tracker_socket(self.config)
-
         self.rows, self.cols = get_matrix_size(self.config)
         self.width, self.height = get_window_size(self.config)
-        # Own copy of the frame (GRB, row-major) for the browser simulator,
-        # because the driver's get_raw_frame() fails with error code -2.
+
         self._shadow = bytearray(self.rows * self.cols * 3)
         debug_cfg = self.config.get("debug", {}) if isinstance(self.config, dict) else {}
 
         self.debug_enabled = bool(debug_cfg.get("show_fps", False) or debug_cfg.get("debug", False))
         self._fps_window_start = time.monotonic()
         self._fps_frame_count = 0
+
+        self.anim_player = RawBinAnimationPlayer("/usr/bin/game-engine/assets/screensaver_1.bin", self.cols, self.rows)
 
         self.state_prefix = state_prefix
         self._mqtt_bridge = GameMqttBridge(
@@ -56,12 +71,17 @@ class BaseGame:
         self.led_matrix = None
         self._init_led_matrix()
 
-        print("[BASE] Initializing HandTrackerClient...")
-        self.tracker = HandTrackerClient(socket_path=str(socket_path))
+        # Use shared tracker if provided, otherwise fallback to local instance
+        if tracker is not None:
+            print("[BASE] Using shared central HandTrackerClient.")
+            self.tracker = tracker
+        else:
+            print("[BASE] Initializing local HandTrackerClient...")
+            if socket_path is None:
+                socket_path = get_hand_tracker_socket(self.config)
+            self.tracker = HandTrackerClient(socket_path=str(socket_path))
+            
         self.running = True
-
-    # -- MQTT passthroughs (kept so child games' existing calls keep working) --
-
     @property
     def mqtt(self):
         return self._mqtt_bridge.client
@@ -92,11 +112,29 @@ class BaseGame:
 
     def call_rpc(self, method: str, params: Any | None = None, timeout_ms: int = 5000):
         return self._mqtt_bridge.call_rpc(method, params=params, timeout_ms=timeout_ms)
+    def _sync_shadow_from_matrix(self):
+        """Refresh the shadow buffer from the hardware matrix (GRB bytes).
+
+        Falls back to the manually written shadow if there is no hardware or the read fails.
+        """
+        if self.led_matrix is None:
+            return False
+
+        try:
+            raw = self.led_matrix.get_raw_frame()
+        except Exception:
+            return False
+
+        if len(raw) != len(self._shadow):
+            return False
+
+        self._shadow[:] = raw
+        return True
 
     def publish_simulated_matrix(self):
         """Publish the current frame in raw GRB bytes for the browser simulator."""
+        self._sync_shadow_from_matrix()
         return self._mqtt_bridge.publish_matrix(bytes(self._shadow), self.cols, self.rows)
-
     # -- Hand input -----------------------------------------------------------
 
     def _get_latest_hand_state(self):
@@ -148,23 +186,6 @@ class BaseGame:
         normalized = str(gesture).strip().lower()
         normalized = normalized.replace("-", "_").replace(" ", "_")
 
-        aliases = {
-            "unknown": Gesture.UNKNOWN,
-            "none": Gesture.UNKNOWN,
-            "open": Gesture.OPEN,
-            "open_palm": Gesture.OPEN,
-            "open_hand": Gesture.OPEN,
-            "closed": Gesture.CLOSED,
-            "closed_fist": Gesture.CLOSED,
-            "fist": Gesture.CLOSED,
-            "pointing": Gesture.POINTING,
-            "pointing_up": Gesture.POINTING,
-            "point_up": Gesture.POINTING,
-            "thumb_up": Gesture.THUMBS_UP,
-            "thumb_down": Gesture.THUMBS_DOWN,
-            "victory": Gesture.VICTORY,
-        }
-
         if normalized in aliases:
             return aliases[normalized]
 
@@ -210,19 +231,38 @@ class BaseGame:
         except Exception:
             return False
 
+    def fill(self, r=0, g=0, b=0):
+        """Fill the entire LED matrix via the C driver."""
+        if self.led_matrix is not None:
+            try:
+                self.led_matrix.fill(r, g, b)
+            except Exception:
+                pass
+
+    def fill_rect(self, x1, y1, x2, y2, r=255, g=255, b=255):
+        """Draw a filled rectangle via the C driver."""
+        if self.led_matrix is not None:
+            try:
+                self.led_matrix.fill_rect(x1, y1, x2, y2, r, g, b)
+            except Exception:
+                pass
+
+    def draw_line(self, x1, y1, x2, y2, r=255, g=255, b=255):
+        """Draw a line via the C driver."""
+        if self.led_matrix is not None:
+            try:
+                self.led_matrix.draw_line(int(x1), int(y1), int(x2), int(y2), r, g, b)
+            except Exception:
+                pass
+
     def set_led_pixel(self, x, y, r=255, g=255, b=255):
-        """Write a single pixel to the LED matrix using board coordinates."""
-        if 0 <= x < self.cols and 0 <= y < self.rows:
-            index = (int(y) * self.cols + int(x)) * 3
-            self._shadow[index:index + 3] = bytes((g & 0xFF, r & 0xFF, b & 0xFF))
+        """Write a single pixel via the C driver."""
+        if self.led_matrix is not None:
+            try:
+                self.led_matrix.set_pixel(int(x), int(y), r, g, b)
+            except Exception:
+                pass
 
-        if self.led_matrix is None:
-            return False
-
-        try:
-            return self.led_matrix.set_pixel(x, y, r, g, b) == 0
-        except Exception:
-            return False
 
     def flush_led_matrix(self):
         """Push the current matrix buffer to the driver if available."""
@@ -309,11 +349,12 @@ class BaseGame:
         """Stop the tracker, MQTT bridge, and running loop cleanly."""
         self.running = False
 
-        if hasattr(self, "tracker") and self.tracker is not None:
+        if hasattr(self, "led_matrix") and self.led_matrix is not None:
             try:
-                self.tracker.stop()
-            except Exception:
-                pass
+                self.led_matrix.close()
+            except Exception as exc:
+                print(f"[BASE] Error closing LED matrix: {exc}")
+            self.led_matrix = None
 
         self._mqtt_bridge.stop()
 
@@ -342,3 +383,5 @@ class BaseGame:
             print(f"[DEBUG] FPS: {fps:.1f}")
             self._fps_window_start = time.monotonic()
             self._fps_frame_count = 0
+
+            
