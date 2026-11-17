@@ -9,3 +9,18 @@ build/
 # Python compiled bytecode
 __pycache__/
 *.py[cod]
+
+recipes-core/game-engine/files/assets/*.bin
+
+# Keep/allow tracking for screensavers 0 through 10
+!recipes-core/game-engine/files/assets/screensaver_0.bin
+!recipes-core/game-engine/files/assets/screensaver_1.bin
+!recipes-core/game-engine/files/assets/screensaver_2.bin
+!recipes-core/game-engine/files/assets/screensaver_3.bin
+!recipes-core/game-engine/files/assets/screensaver_4.bin
+!recipes-core/game-engine/files/assets/screensaver_5.bin
+!recipes-core/game-engine/files/assets/screensaver_6.bin
+!recipes-core/game-engine/files/assets/screensaver_7.bin
+!recipes-core/game-engine/files/assets/screensaver_8.bin
+!recipes-core/game-engine/files/assets/screensaver_9.bin
+!recipes-core/game-engine/files/assets/screensaver_10.bin
