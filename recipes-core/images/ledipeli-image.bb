@@ -32,6 +32,8 @@ IMAGE_INSTALL:append = " \
     game-engine \
     mosquitto \
     web-gui \
+    python3-gpiod \
+    button-gpio \
 "
 ENABLE_SPI_BUS = "1"
 
