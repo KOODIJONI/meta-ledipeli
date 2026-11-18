@@ -7,7 +7,7 @@ class MqttPublisher:
         self.topic = topic
         self.payload = payload
         self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id=self.client_id)
-
+        self.subscribedTo = []
         self.client.on_connect = self.on_connect
         self.client.on_disconnect = self.on_disconnect
         self.client.on_publish = self.on_publish
@@ -17,15 +17,15 @@ class MqttPublisher:
     def on_connect(self, client, userdata, flags, reason_code, properties):
         # Doesn't subscribe on connect
         if (reason_code.is_failure):
-            print(f"{self.client_id} failed to connect {self.topic} with reason code {reason_code}")
+            print(f"{self.client_id} failed to connect with reason code {reason_code}")
         else:
-            print(f"{self.client_id} connected to {self.topic} with reason code {reason_code}")
+            print(f"{self.client_id} connected with reason code {reason_code}")
 
     def on_disconnect(self, client, userdata, flags, reason_code, properties):
         if (reason_code.is_failure):
-            print(f"{self.client_id} Failed to disconnect from topic {self.topic} with reason code {reason_code}")
+            print(f"{self.client_id} Failed to disconnect with reason code {reason_code}")
         else:
-            print(f"{self.client_id} Disconnected from topic {self.topic} with reason code {reason_code}")
+            print(f"{self.client_id} Disconnected with reason code {reason_code}")
     
     def on_publish(self, client, userdata, mid, reason_code, properties):
         if (reason_code.is_failure):
@@ -41,17 +41,18 @@ class MqttPublisher:
         self.client.disconnect()
         self.client.loop_stop()
     
-    def publish(self, topic, qos = 0):
-        print(f"Publishing {self.payload}")
-        self.client.publish(topic, self.payload, qos)
+    def publish(self, topic, payload, qos = 0):
+        print(f"Publishing {payload}")
+        self.client.publish(topic, payload, qos)
 
 class MqttSubscriber(MqttPublisher):
-    def __init__(self, client_id, topic):
+    def __init__(self, client_id, topic, subscribeOnConnect = True):
         # Client ID HAS to be unique
         self.client_id = client_id
         self.topic = topic
         self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id=self.client_id)
-        self.payload = None
+        self.subscribedTopicsList = []
+        self.subscribeOnConnect = subscribeOnConnect
         self.client.on_connect = self.on_connect
         self.client.on_message = self.on_message
         self.client.on_subscribe = self.on_subscribe
@@ -61,12 +62,24 @@ class MqttSubscriber(MqttPublisher):
         print("Publisher using client_id / topic: " + self.client_id + " / " + self.topic)
 
     def on_connect(self, client, userdata, flags, reason_code, properties):
-        print(f"{self.client_id} connected to {self.topic} with reason code {reason_code}")
-        client.subscribe(self.topic)
-
+        if (reason_code.is_failure):
+            print(f"{self.client_id} failed to connect with reason code {reason_code}")
+        else:
+            print(f"{self.client_id} connected with reason code {reason_code}")
+            if (self.subscribeOnConnect):
+                self.subscribe(self.topic)
+        
+    def on_disconnect(self, client, userdata, flags, reason_code, properties):
+        if (reason_code.is_failure):
+            print(f"{self.client_id} Failed to disconnect with reason code {reason_code}")
+        else:
+            print(f"{self.client_id} Disconnected with reason code {reason_code}")
+            self.subscribedTopicsList.clear()
+            
     def on_message(self, client, userdata, msg):
-        self.payload = msg.payload.decode("utf-8")
-        print(f"{self.client_id} recived on {msg.topic}: {self.payload}")
+        payload = msg.payload.decode("utf-8")
+        self.addPayload(msg.topic, payload)
+        print(f"{self.client_id} recived on {msg.topic}: {payload}")
 
     def on_subscribe(self, client, userdata, mid, reason_code_list, properties):
         if reason_code_list[0].is_failure:
@@ -79,6 +92,49 @@ class MqttSubscriber(MqttPublisher):
             print("unsubscribe succeeded")
         else:
             print(f"Broker replied with failure: {reason_code_list[0]}")
+
+    def subscribe(self, topic):
+        #Meant for subscribing to multiple topics with one client
+        print(f"{self.client_id} subscribing to {topic}")
+        self.client.subscribe(topic)
+        self.addSubscribedTopic(topic)
         
-    def publish(self, topic , qos = 0):
-        print(f"Publishing on a listener not allowed ):<")
+    def unsubscribe(self, topic):
+        print(f"{self.client_id} subscribing to {topic}")
+        self.client.unsubscribe(topic)
+
+    def removeSubscribedTopic(self, topic):
+        for x in self.subscribedTopicsList:
+            if x.topic == topic:
+                subscribedTopicsList.remove(x)
+                break
+
+    def addSubscribedTopic(self, topic):
+        if (any(x for x in self.subscribedTopicsList if x.topic == topic)):
+            print(f"Already subscribed to {topic}")
+        else:
+            newSubscribedTopic = SubscribedTopic(topic)
+            self.subscribedTopicsList.append(newSubscribedTopic)
+    
+    def addPayload(self, topic, payload):
+        for x in self.subscribedTopicsList:
+            if x.topic == topic:
+                x.payload = payload
+                break
+
+    def findTopicFromList(self, topic):
+        for x in self.subscribedTopicsList:
+            if x.topic == topic:
+                return x
+        return False
+        
+
+class SubscribedTopic:
+    def __init__(self, topic):
+        self.topic = topic
+        self.payload = None
+
+
+
+
+        
