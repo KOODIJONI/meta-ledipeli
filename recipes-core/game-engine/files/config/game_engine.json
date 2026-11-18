@@ -7,11 +7,12 @@
         "hand_tracker_socket": "/tmp/hand_tracker.sock",
         "fps": 60,
         "width": 640,
-        "height": 480
+        "height": 480,
+        "simulate": true
     },
     "startup": {
         "initial_game": "test_game",
-        "available_games": ["test_game","tetris", "pong", "touch"]  
+        "available_games": ["test_game","tetris", "pong", "touch", "breakout"]  
     },
 
     "tetris": {
@@ -21,6 +22,10 @@
     "debug": {
         "log_level": "info",
         "print_input": false,
-        "show_fps": false
+        "show_fps": true
+    },
+    "mqtt": {
+    "enabled": true,
+    "broker_url": "tcp://localhost:1883"
     }
 }

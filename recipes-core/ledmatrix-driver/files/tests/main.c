@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include "args.h"
@@ -80,16 +81,30 @@ int main(int argc, char *argv[])
     MatrixPrintLogical(&read_matrix);
     MatrixPrintPhysical(&read_matrix);
     MatrixPrintRawBuffer(&read_matrix);
-    
-    //BufferPrintRaw(&buffer);
 
-    //BufferPrintBin(&buffer);
+    printf("\n--- Testing MatrixUndoTransformation ---\n");
+    int log_w, log_h;
+    MatrixGetSize(&read_matrix, &log_h, &log_w); // Note: MatrixGetSize returns rows, cols
+    
+    RgbColor *flat_logical_buffer = malloc(log_w * log_h * sizeof(RgbColor));
+    if (flat_logical_buffer != NULL) {
+        result = MatrixUndoTransformation(&read_matrix, flat_logical_buffer);
+        if (result == OK) {
+            printf("Successfully extracted %d x %d untransformed flat logical frame:\n", log_w, log_h);
+            for (int i = 0; i < 10 && i < (log_w * log_h); i++) {
+                printf("Pixel[%d]: R=%3d, G=%3d, B=%3d\n", 
+                       i, flat_logical_buffer[i].r, flat_logical_buffer[i].g, flat_logical_buffer[i].b);
+            }
+        } else {
+            fprintf(stderr, "Error: MatrixUndoTransformation failed with code %d\n", result);
+        }
+        free(flat_logical_buffer);
+    }
 
     BufferFree(&buffer);
 
     MatrixFree(&read_matrix);
     MatrixFree(&write_matrix);
-    
 
     return 0;
 }

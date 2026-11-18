@@ -1,10 +1,18 @@
 # games/tetris/tetris.py
-from games.base_game import BaseGame
+from base_game.base_game import BaseGame
 
 
 class Tetris(BaseGame):
-    def __init__(self, config=None):
-        super().__init__(config=config)
+    def __init__(self, socket_path=None, config=None, mqtt_client=None, mqtt_broker=None, state_prefix: str = "game", tracker=None):
+        super().__init__(
+            socket_path=socket_path,
+            config=config,
+            mqtt_client=mqtt_client,
+            mqtt_broker=mqtt_broker,
+            state_prefix=state_prefix,
+            tracker=tracker
+        )
+        super().__init__(config=config, mqtt_client=mqtt_client)
         self.score = 0
 
         config = config or {}

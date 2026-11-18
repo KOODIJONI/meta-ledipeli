@@ -77,3 +77,14 @@ def get_fps(config: dict[str, Any]) -> int:
 
 def get_hand_tracker_socket(config: dict[str, Any]) -> str:
     return str(get_config_value(config, "engine", "hand_tracker_socket", default="/tmp/hand_tracker.sock"))
+
+def get_available_games(config: dict[str, Any]) -> list[str]:
+    startup = config.get("startup", {})
+    if not isinstance(startup, dict):
+        return ["tetris"]
+
+    games = startup.get("available_games")
+    if not isinstance(games, list):
+        return ["tetris"]
+
+    return [str(g).strip().lower() for g in games if str(g).strip()]
