@@ -4,6 +4,8 @@ LICENSE = "MIT"
 inherit core-image
 
 IMAGE_INSTALL:append = " \
+    mosquitto \
+    mosquitto-clients \
     packagegroup-core-boot \
     dropbear \
     nginx \
@@ -55,3 +57,5 @@ dtoverlay=ledipeli-spi-ws281x,speed0=6400000,speed1=6400000,speed2=6400000,speed
 
 SYSTEMD_AUTO_ENABLE:dropbear = "enable"
 IMAGE_ROOTFS_SIZE ?= "819200"
+
+PACKAGECONFIG:append:pn-mosquitto = " websockets"
