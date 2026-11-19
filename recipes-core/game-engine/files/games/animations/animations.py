@@ -39,11 +39,7 @@ class Animations(BaseGame):
                     self.set_led_pixel(x,y,g_val,r_val,b_val)
                     idx += 3
 
-    def stop(self):
-        """Clean up video capture resources cleanly on exit."""
-        if hasattr(self, "anim_player") and self.anim_player is not None:
-            try:
-                self.anim_player.release()
-            except Exception:
-                pass
-        super().stop()
+    def _cleanup(self):
+        if getattr(self, "anim_player", None) is not None:
+            self.anim_player.release()
+        super()._cleanup()

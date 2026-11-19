@@ -14,6 +14,8 @@ from config import get_hand_tracker_socket, get_matrix_size, get_window_size, ge
 from .game_mqtt_bridge import GameMqttBridge
 from hand_client import HandTrackerClient
 from base_game.animation_player import RawBinAnimationPlayer
+import threading
+
 
 class Gesture(Enum):
     UNKNOWN = "unknown"
@@ -68,6 +70,8 @@ class BaseGame:
             height=self.height,
         )
 
+        self._cleanup_lock = threading.Lock()
+        self._cleaned_up = False    
         self.led_matrix = None
         self._init_led_matrix()
 
@@ -343,22 +347,8 @@ class BaseGame:
         except KeyboardInterrupt:
             print("\n[BASE] Stopping game...")
         finally:
-            self.stop()
+            self._cleanup()
 
-    def stop(self):
-        """Stop the tracker, MQTT bridge, and running loop cleanly."""
-        self.running = False
-
-        if hasattr(self, "led_matrix") and self.led_matrix is not None:
-            try:
-                self.led_matrix.close()
-            except Exception as exc:
-                print(f"[BASE] Error closing LED matrix: {exc}")
-            self.led_matrix = None
-
-        self._mqtt_bridge.stop()
-
-        print("[BASE] Tracker stopped. Exiting cleanly.")
 
     def set_simulate_matrix(self, enabled: bool):
         return self._mqtt_bridge.set_simulate_matrix_enabled(enabled)
@@ -383,5 +373,29 @@ class BaseGame:
             print(f"[DEBUG] FPS: {fps:.1f}")
             self._fps_window_start = time.monotonic()
             self._fps_frame_count = 0
+    import threading
 
-            
+
+
+    def stop(self):
+        """Safe from any thread: only asks the loop to exit."""
+        self.running = False
+
+    def _cleanup(self):
+        """Runs once, on the game thread, after the loop has exited."""
+        with self._cleanup_lock:
+            if self._cleaned_up:
+                return
+            self._cleaned_up = True
+
+        led, self.led_matrix = self.led_matrix, None
+        if led is not None:
+            try:
+                led.close()
+            except Exception as exc:
+                print(f"[BASE] Error closing LED matrix: {exc}")
+
+        self._mqtt_bridge.stop()
+        print("[BASE] Game cleaned up.")
+
+                
