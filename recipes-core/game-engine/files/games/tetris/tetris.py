@@ -17,19 +17,24 @@ class Tetris(BaseGame):
 
         pass
     def handle_input(self, hand_state):
+
         pass
     def update(self):
         """Tetris-specific physics/drop logic per frame."""
+
         pass
 
     def render(self):
         """Draw Tetris grid (terminal or GUI framework)."""
+
         pass
 
 class Board():
     def __init__(self,cols,rows):
+
         pass
 
 class Shape():
     def __init__(self):
+        
         pass
