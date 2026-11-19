@@ -9,6 +9,7 @@ static int led_fd = -1;
 static uint64_t last_send_ns = 0;
 static bool have_last_send = false;
 #define RESET_WORDS 60
+#define SPI_HZ 6400000ULL
 
 size_t BufferRequiredSamples(const Matrix *m) {
     if (!m) return 0;
@@ -134,11 +135,9 @@ int BufferSendToKernel(const Buffer *buffer) {
         uint64_t now_ns = ((uint64_t)now.tv_sec * 1000000000ULL) + (uint64_t)now.tv_nsec;
         uint64_t elapsed_ns = have_last_send ? (now_ns - last_send_ns) : UINT64_MAX;
 
-        /* Three parallel RGB channels share the same frame timing, so the payload
-         * per channel is one third of the full packed data. Keep the 50us reset
-         * as a minimum low period after the last write. */
         uint64_t per_channel_bits = ((uint64_t)buffer->size * sizeof(uint32_t) * 8ULL) / 3ULL;
-        uint64_t min_interval_ns = 50000ULL + (per_channel_bits * 1250ULL);
+
+        uint64_t min_interval_ns = 50000ULL + ((per_channel_bits * 1000000000ULL + SPI_HZ - 1) / SPI_HZ);
         if (have_last_send && elapsed_ns < min_interval_ns) {
             return ERROR_OUT_OF_BOUNDS;
         }

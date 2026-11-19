@@ -4,6 +4,7 @@
 #include <string.h>
 #include "matrix.h"
 #include "config.h"
+#include "gamma.h"
 
 bool debug = false;
 
@@ -19,7 +20,20 @@ static inline int32_t MatrixLogicalH(const Matrix *m)
     return (m->rotation == ROTATION_90 || m->rotation == ROTATION_270) ? m->cols : m->rows;
 }
 
-/* ---------- init ---------- */
+
+
+Matrix *MatrixCreate(const char *json_path)
+{
+    Matrix *m = calloc(1, sizeof(Matrix));
+    if (m == NULL)
+        return NULL;
+
+    if (MatrixInitWithJson(m, json_path) != OK) {
+        free(m);
+        return NULL;
+    }
+    return m;
+}
 
 int MatrixInit(Matrix *m, const MatrixConfig *config)
 {
@@ -225,7 +239,10 @@ int MatrixPrintRawBuffer(const Matrix *m)
     int total_pixels = m->rows * m->cols;
     for (int i = 0; i < total_pixels; i++) {
         RgbColor color = m->colors[i];
-        printf("%02X%02X%02X ", color.r, color.g, color.b);
+        uint8_t r = antigamma8[color.r];
+        uint8_t g = antigamma8[color.g];
+        uint8_t b = antigamma8[color.b];
+        printf("%02X%02X%02X ", r, g, b);
 
         if ((i + 1) % m->tile_cols == 0) {
             printf("\n");
@@ -294,12 +311,6 @@ int32_t MatrixGetPixelIndex(const Matrix *m, uint8_t x, uint8_t y)
     const int32_t tile = ty * m->grid_cols + tx;
     const int32_t tile_pixels = (int32_t)m->tile_rows * m->tile_cols;
 
-    /* Inside each tile, pixels are stored row-major in x/y order:
-     * index = local_y * tile_cols + local_x
-     * This must be used instead of the transposed form that accidentally
-     * multiplies x by tile_rows. That transposed form only looks correct
-     * for square tiles like 8x8, but breaks when the panel topology is
-     * arranged as multiple tiles across a row/column. */
     return tile * tile_pixels + ly * m->tile_cols + lx;
 }
 
@@ -316,19 +327,23 @@ int MatrixWriteColor(Matrix *m, uint8_t x, uint8_t y, const RgbColor *self)
         return index;
     }
 
-    if (m->brightness == 255) {
-        m->colors[index] = *self;
-        return OK;
-    }
     if (m->brightness == 0) {
         m->colors[index] = (RgbColor){0, 0, 0};
         return OK;
     }
 
-    /* /255 keeps full scale exact (255 * b / 255 == b) */
-    m->colors[index].r = (uint8_t)(((uint16_t)self->r * m->brightness) / 255);
-    m->colors[index].g = (uint8_t)(((uint16_t)self->g * m->brightness) / 255);
-    m->colors[index].b = (uint8_t)(((uint16_t)self->b * m->brightness) / 255);
+    uint8_t r = gamma8[self->g];
+    uint8_t g = gamma8[self->r];
+    uint8_t b = gamma8[self->b];
+
+    if (m->brightness == 255) {
+        m->colors[index] = (RgbColor){r, g, b};
+        return OK;
+    }
+
+    m->colors[index].r = (uint8_t)(((uint16_t)r * m->brightness) / 255);
+    m->colors[index].g = (uint8_t)(((uint16_t)g * m->brightness) / 255);
+    m->colors[index].b = (uint8_t)(((uint16_t)b * m->brightness) / 255);
 
     return OK;
 }
@@ -486,6 +501,14 @@ int MatrixSwapBuffers(Matrix **write, Matrix **read)
     return OK;
 }
 
+void MatrixDestroy(Matrix *m)
+{
+    if (m == NULL)
+        return;
+
+    MatrixFree(m);   
+    free(m);         
+}
 void MatrixFree(Matrix *m)
 {
     if (m == NULL)
@@ -493,4 +516,41 @@ void MatrixFree(Matrix *m)
 
     free(m->colors);
     m->colors = NULL;
+}
+
+int MatrixUndoTransformation(const Matrix *m, RgbColor *out_logical_buffer)
+{
+    if (MatrixValidate(m) != OK || out_logical_buffer == NULL) {
+        return ERROR_NULL_POINTER;
+    }
+
+    int logical_w = MatrixLogicalW(m);
+    int logical_h = MatrixLogicalH(m);
+
+    for (int y = 0; y < logical_h; y++) {
+        for (int x = 0; x < logical_w; x++) {
+            int32_t physical_idx = MatrixGetPixelIndex(m, (uint8_t)x, (uint8_t)y);
+            if (physical_idx < 0) {
+                return physical_idx;
+            }
+            
+            int logical_idx = y * logical_w + x;
+            RgbColor color = m->colors[physical_idx];
+
+            // Reverse brightness scaling to restore original unscaled levels
+            if (m->brightness > 0 && m->brightness < 255) {
+                color.r = (uint8_t)(((uint16_t)color.r * 255 + (m->brightness / 2)) / m->brightness);
+                color.g = (uint8_t)(((uint16_t)color.g * 255 + (m->brightness / 2)) / m->brightness);
+                color.b = (uint8_t)(((uint16_t)color.b * 255 + (m->brightness / 2)) / m->brightness);
+            } else if (m->brightness == 0) {
+                color.r = 0;
+                color.g = 0;
+                color.b = 0;
+            }
+
+            out_logical_buffer[logical_idx] = color;
+        }
+    }
+
+    return OK;
 }

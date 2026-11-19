@@ -26,11 +26,16 @@ IMAGE_INSTALL:append = " \
     libegl-mesa \
     libgles2-mesa \
     python3-mediapipe \
+    python3-paho-mqtt \
     hand-client \
     ledmatrix-kernel \
     ledmatrix-driver \
     ledmatrix-py \
     game-engine \
+    mosquitto \
+    web-gui \
+    python3-gpiod \
+    button-gpio \
 "
 ENABLE_SPI_BUS = "1"
 
