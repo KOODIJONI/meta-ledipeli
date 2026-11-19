@@ -1,8 +1,8 @@
 {
-  "tile_rows": 2,
-  "tile_cols": 2,
-  "grid_rows": 2,
-  "grid_cols": 2,
+  "tile_rows": 8,
+  "tile_cols": 8,
+  "grid_rows": 6,
+  "grid_cols": 6,
   "brightness": 255,
   "rotation": 0
 }
