@@ -46,7 +46,8 @@ do_install() {
             install -m 0644 ${WORKDIR}/assets/screensaver_${i}.bin ${D}${bindir}/game-engine/assets/
         fi
     done
-
+    
+    install -m 0644 ${WORKDIR}/assets/draw.bin ${D}${bindir}/game-engine/assets/
     install -d ${D}${sysconfdir}/game-engine
     install -m 0644 ${WORKDIR}/config/game_engine.json ${D}${sysconfdir}/game-engine/game_engine.json
 

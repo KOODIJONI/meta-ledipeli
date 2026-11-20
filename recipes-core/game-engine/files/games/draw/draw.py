@@ -3,6 +3,8 @@ from config import get_matrix_size
 from base_game.text_renderer import draw_text_centered
 import time
 
+DRAW_ANIM_PATH = "/bin/game-engine/assets/draw.bin"
+
 class Draw(BaseGame):
     def __init__(
         self,
@@ -46,14 +48,40 @@ class Draw(BaseGame):
         ]
         self.color_index = 0
         self.color = self.palette[self.color_index]
-        self._title_duration = 3.0
+
+        self._title_duration = 9.0
         self._title_start = 0.0
-        self._show_title()  
-                
+        self._title_anim_fps = 15.0
+        self._last_title_frame_time = 0.0
+        self._current_title_frame = None
+        self._restored_default_anim = False
+
+        self._show_title()
+
     def _show_title(self):
         self.state = "title"
+        self._restored_default_anim = False
         self._title_start = time.monotonic()
+        self._last_title_frame_time = self._title_start
 
+        if getattr(self, "anim_player", None) is not None:
+            self.anim_player.set_animation_path(DRAW_ANIM_PATH)
+            self.anim_player.current_idx = 0
+            self._current_title_frame = self.anim_player.get_next_frame()
+
+    def _draw_bin_frame(self, frame_bytes: bytes | None):
+        if not frame_bytes or len(frame_bytes) < self.cols * self.rows * 3:
+            return
+
+        idx = 0
+        for y in range(self.rows):
+            for x in range(self.cols):
+                r = frame_bytes[idx]
+                g = frame_bytes[idx + 1]
+                b = frame_bytes[idx + 2]
+                idx += 3
+                if r or g or b:
+                    self.set_led_pixel(x, y, r, g, b)
     def _clamp_coords(self, norm_x, norm_y):
         x = int(norm_x * self.width)
         y = int(norm_y * self.height)
@@ -140,13 +168,26 @@ class Draw(BaseGame):
 
 
     def _render_game_name(self):
-        draw_text_centered(self, "DRAW",15,  (255, 60, 60), scale=3)
+        draw_text_centered(self, "Canvas",20,  (160, 160, 160), scale=2)
+
+
+    def _render_title_animation(self):
+        if getattr(self, "anim_player", None) is None:
+            return
+
+        now = time.monotonic()
+        frame_interval = 1.0 / self._title_anim_fps
+        if now - self._last_title_frame_time >= frame_interval:
+            self._current_title_frame = self.anim_player.get_next_frame()
+            self._last_title_frame_time = now
+
+        self._draw_bin_frame(self._current_title_frame)
 
     def render(self):
         if self.state == "title":
+            self._render_title_animation()
             self._render_game_name()
             return
-
         for x in range(self.width):
             for y in range(self.height):
                 pixel = self.canvas[y][x]
