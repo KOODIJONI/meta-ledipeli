@@ -1,6 +1,8 @@
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
 SRC_URI:append = " file://overlays/ledipeli-spi-ws281x.dts"
+SRC_URI:append = " file://cpufreq-performance.cfg"
+
 
 KERNEL_DEVICETREE:append = " overlays/ledipeli-spi-ws281x.dtbo"
 
@@ -17,3 +19,4 @@ do_configure:append() {
         echo "dtbo-y += ledipeli-spi-ws281x.dtbo" >> "$OVERLAY_MAKEFILE"
     fi
 }
+
