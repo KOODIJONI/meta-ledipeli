@@ -373,8 +373,15 @@ class BaseGame:
             print(f"[DEBUG] FPS: {fps:.1f}")
             self._fps_window_start = time.monotonic()
             self._fps_frame_count = 0
-    import threading
-
+            
+    def set_brightness(self, brightness: float) -> bool:
+        if self.led_matrix is None:
+            return False
+        try:
+            return self.led_matrix.set_brightness(brightness) == 0
+        except Exception as exc:
+            print(f"[BASE] Failed to set brightness: {exc}")
+            return False
 
 
     def stop(self):

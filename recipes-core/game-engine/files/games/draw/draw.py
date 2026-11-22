@@ -25,10 +25,10 @@ class Draw(BaseGame):
         )
 
         self.rows, self.cols = get_matrix_size(self.config)
-        self.width = max(1, self.cols - 1)
-        self.height = max(1, self.rows - 1)
+        self.canvas_width = max(1, self.cols - 1)
+        self.canvas_height = max(1, self.rows - 1)
 
-        self.canvas = [[None for _ in range(self.width)] for _ in range(self.height)]
+        self.canvas = [[None for _ in range(self.canvas_width)] for _ in range(self.canvas_height)]
 
         self.prev_player_x = None
         self.prev_player_y = None
@@ -83,10 +83,10 @@ class Draw(BaseGame):
                 if r or g or b:
                     self.set_led_pixel(x, y, r, g, b)
     def _clamp_coords(self, norm_x, norm_y):
-        x = int(norm_x * self.width)
-        y = int(norm_y * self.height)
-        x = max(0, min(self.width - 1, x))
-        y = max(0, min(self.height - 1, y))
+        x = int(norm_x * self.canvas_width)
+        y = int(norm_y * self.canvas_height)
+        x = max(0, min(self.canvas_width - 1, x))
+        y = max(0, min(self.canvas_height - 1, y))
         return x, y
 
     def handle_input(self, hand_state):
@@ -164,7 +164,7 @@ class Draw(BaseGame):
 
 
     def render_selected_color(self):
-        self.fill_rect(self.width-6,0,self.width,6,self.color[0],self.color[1],self.color[2])
+        self.fill_rect(self.canvas_width-6,0,self.canvas_width,6,self.color[0],self.color[1],self.color[2])
 
 
     def _render_game_name(self):
@@ -188,8 +188,8 @@ class Draw(BaseGame):
             self._render_title_animation()
             self._render_game_name()
             return
-        for x in range(self.width):
-            for y in range(self.height):
+        for x in range(self.canvas_width):
+            for y in range(self.canvas_height):
                 pixel = self.canvas[y][x]
                 if pixel is not None:
                     self.set_led_pixel(x, y, pixel[0], pixel[1], pixel[2])
