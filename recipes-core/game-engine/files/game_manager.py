@@ -377,3 +377,10 @@ class GameManager:
         if self.mqtt_client is not None:
             self.mqtt_client.publish("engine/matrix/brightness", {"brightness": brightness}, retain=True)
         return brightness
+
+    def toggle_pause(self):
+        
+        with self._game_lock:
+            game = self.game
+        if game is not None:
+            game.pause()

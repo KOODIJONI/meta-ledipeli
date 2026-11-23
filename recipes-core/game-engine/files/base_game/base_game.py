@@ -405,4 +405,6 @@ class BaseGame:
         self._mqtt_bridge.stop()
         print("[BASE] Game cleaned up.")
 
-                
+
+    def pause():
+        pass

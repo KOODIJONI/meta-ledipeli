@@ -199,3 +199,5 @@ class Draw(BaseGame):
 
         if self.player_x is not None and self.player_y is not None:
             self.set_led_pixel(self.player_x, self.player_y, 255, 255, 255) 
+    def pause(self):
+        self.canvas = [[None for _ in range(self.canvas_width)] for _ in range(self.canvas_height)]

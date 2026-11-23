@@ -184,6 +184,8 @@ function GameSimulator() {
   const [cameraSize, setCameraSize] = useState({ width: 0, height: 0 })
   const [matrixData, setMatrixData] = useState([])
   const [cycling, setCycling] = useState(false)
+  const [pausing, setPausing] = useState(false)
+
   const [simulateMatrix, setSimulateMatrix] = useState(false)
   const [simulateInput, setSimulateInput] = useState(false)
   const [selectedGesture, setSelectedGesture] = useState('pointing')
@@ -345,6 +347,16 @@ function GameSimulator() {
         setCycling(false)
       }
     }
+  const pauseGame = async () => {
+      setPausing(true)
+      try {
+        await rpcClient.call('pause_game')
+      } catch (error) {
+        console.warn(`Pause game failed: ${error.message}`)
+      } finally {
+        setPausing(false)
+      }
+  }
   const toggleSimulation = async (type, checked) => {
     const methodNames = {
       matrix: ['simulateMatrix', 'simulate_matrix'],
@@ -413,6 +425,9 @@ function GameSimulator() {
     </button>
     <button type="button" onClick={() => cycleGame(1)} disabled={cycling}>
       Next game ▶
+    </button>
+      <button type="button" onClick={() => pauseGame(1)} disabled={pausing}>
+      Pause 
     </button>
   </div>
 

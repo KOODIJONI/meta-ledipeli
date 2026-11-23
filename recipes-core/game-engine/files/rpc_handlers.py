@@ -17,6 +17,7 @@ class GameRpcHandlers:
             "simulate_matrix": self.set_matrix_simulation,
             "simulate_input": self.set_input_simulation,
             "cycle_game": self.cycle_game,
+            "pause_game": self.pause_game,
             "matrix_brightness": self.set_matrix_brightness,
         }
 
@@ -115,3 +116,6 @@ class GameRpcHandlers:
         applied = self.manager.set_matrix_brightness(brightness)
         print(f"[RPC] Matrix brightness set to: {applied}")
         return {"brightness": applied, "status": "ok"}
+    
+    def pause_game(self, params):
+        self.manager.toggle_pause()
