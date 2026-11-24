@@ -1,5 +1,6 @@
 # games/matrix_game/matrix_game.py
 from base_game.base_game import BaseGame, Gesture
+import time
 
 class MatrixGame(BaseGame):
     def __init__(self, socket_path=None, config=None, mqtt_client=None, mqtt_broker=None, state_prefix: str = "game", tracker=None):
