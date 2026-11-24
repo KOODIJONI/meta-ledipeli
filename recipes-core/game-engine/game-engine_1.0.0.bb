@@ -9,6 +9,7 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 SRC_URI = " \
     file://main.py \
     file://game_manager.py \
+    file://rpc_handlers.py \
     file://mqtt_client.py \
     file://config.py \
     file://parse_arg.py \
@@ -32,6 +33,7 @@ do_install() {
     install -d ${D}${bindir}/game-engine
     install -m 0755 ${WORKDIR}/main.py ${D}${bindir}/game-engine/main.py
     install -m 0755 ${WORKDIR}/game_manager.py ${D}${bindir}/game-engine/game_manager.py
+    install -m 0644 ${WORKDIR}/rpc_handlers.py ${D}${bindir}/game-engine/rpc_handlers.py
     install -m 0644 ${WORKDIR}/mqtt_client.py ${D}${bindir}/game-engine/mqtt_client.py
     install -m 0644 ${WORKDIR}/config.py ${D}${bindir}/game-engine/config.py
     install -m 0644 ${WORKDIR}/parse_arg.py ${D}${bindir}/game-engine/parse_arg.py

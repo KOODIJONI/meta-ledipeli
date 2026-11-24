@@ -115,6 +115,12 @@ class LEDMatrix:
     if self._matrix:
       _lib.MatrixDestroy(self._matrix)
       self._matrix = None
+  def set_brightness(self, brightness: float) -> int:
+    """brightness: 0.0 .. 1.0"""
+    return _lib.MatrixSetBrightness(self._matrix, ctypes.c_float(brightness))
+
+  def get_brightness(self) -> float:
+      return _lib.MatrixGetBrightness(self._matrix)
 
   def __del__(self):
     try:

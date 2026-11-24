@@ -131,3 +131,9 @@ _lib.MatrixCreate.argtypes = [ctypes.c_char_p]
 _lib.MatrixCreate.restype = ctypes.POINTER(Matrix)   
 _lib.MatrixDestroy.argtypes = [ctypes.POINTER(Matrix)]
 _lib.MatrixDestroy.restype = None
+
+_lib.MatrixSetBrightness.argtypes = [ctypes.POINTER(Matrix), ctypes.c_float]
+_lib.MatrixSetBrightness.restype = ctypes.c_int
+
+_lib.MatrixGetBrightness.argtypes = [ctypes.POINTER(Matrix)]
+_lib.MatrixGetBrightness.restype = ctypes.c_float

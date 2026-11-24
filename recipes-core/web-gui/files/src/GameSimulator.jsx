@@ -183,14 +183,23 @@ function GameSimulator() {
   const [matrixSize, setMatrixSize] = useState({ width: 0, height: 0 })
   const [cameraSize, setCameraSize] = useState({ width: 0, height: 0 })
   const [matrixData, setMatrixData] = useState([])
+  const [cycling, setCycling] = useState(false)
+  const [pausing, setPausing] = useState(false)
+
   const [simulateMatrix, setSimulateMatrix] = useState(false)
   const [simulateInput, setSimulateInput] = useState(false)
   const [selectedGesture, setSelectedGesture] = useState('pointing')
   const matrixSizeRef = useRef({ width: 0, height: 0 })
+  const lastPointerRef = useRef({ x: 0.5, y: 0.5 }) // normalized 0..1, defaults to center
+  const cameraSizeRef = useRef({ width: 0, height: 0 })
 
   useEffect(() => {
     matrixSizeRef.current = matrixSize
   }, [matrixSize])
+
+  useEffect(() => {
+  cameraSizeRef.current = cameraSize
+}, [cameraSize])
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -306,6 +315,8 @@ function GameSimulator() {
     const normalizedX = xInRect / rect.width
     const normalizedY = yInRect / rect.height
 
+    lastPointerRef.current = { x: normalizedX, y: normalizedY }
+
     const cameraX = Math.round(normalizedX * cameraSize.width)
     const cameraY = Math.round(normalizedY * cameraSize.height)
 
@@ -325,6 +336,27 @@ function GameSimulator() {
   const visibleRows = matrixData.length
   const visibleCols = matrixData[0]?.length ?? 0
 
+
+  const cycleGame = async (step) => {
+      setCycling(true)
+      try {
+        await rpcClient.call('cycle_game', { step })
+      } catch (error) {
+        console.warn(`Cycle game failed: ${error.message}`)
+      } finally {
+        setCycling(false)
+      }
+    }
+  const pauseGame = async () => {
+      setPausing(true)
+      try {
+        await rpcClient.call('pause_game')
+      } catch (error) {
+        console.warn(`Pause game failed: ${error.message}`)
+      } finally {
+        setPausing(false)
+      }
+  }
   const toggleSimulation = async (type, checked) => {
     const methodNames = {
       matrix: ['simulateMatrix', 'simulate_matrix'],
@@ -367,65 +399,66 @@ function GameSimulator() {
   ]
 
   const sendGesture = async (gesture) => {
-    setSelectedGesture(gesture)
+  setSelectedGesture(gesture)
 
-    try {
-      await rpcClient.publish(MOUSE_EVENT_TOPIC, {
-        x: cameraX,
-        y: cameraY,
-        gesture,
-      })
-      return
-    } catch (error) {
-      console.warn('Gesture publish failed:', error)
-    }
+  const { width, height } = cameraSizeRef.current
+  const { x, y } = lastPointerRef.current
 
-    const methodNames = ['setGesture', 'set_gesture']
-    let lastError = null
-
-    for (const method of methodNames) {
-      try {
-        await rpcClient.call(method, { gesture })
-        return
-      } catch (error) {
-        lastError = error
-      }
-    }
-
-    console.warn(`Gesture send failed: ${lastError?.message ?? 'Unknown error'}`)
+  try {
+    await rpcClient.publish(MOUSE_EVENT_TOPIC, {
+      x: width ? Math.round(x * width) : x,
+      y: height ? Math.round(y * height) : y,
+      gesture,
+    })
+  } catch (error) {
+    console.warn('Gesture publish failed:', error)
   }
+}
 
   return (
     <main>
-      <h1>Game Simulator</h1>
+  <h1>Game Simulator</h1>
 
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-        <label>
-          <input
-            type="checkbox"
-            checked={simulateMatrix}
-            onChange={async (event) => {
-              const checked = event.target.checked
-              setSimulateMatrix(checked)
-              await toggleSimulation('matrix', checked)
-            }}
-          />
-          Simulate matrix
-        </label>
+  <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+    <button type="button" onClick={() => cycleGame(-1)} disabled={cycling}>
+      ◀ Previous game
+    </button>
+    <button type="button" onClick={() => cycleGame(1)} disabled={cycling}>
+      Next game ▶
+    </button>
+      <button type="button" onClick={() => pauseGame(1)} disabled={pausing}>
+      Pause 
+    </button>
+  </div>
 
-        <label>
-          <input
-            type="checkbox"
-            checked={simulateInput}
-            onChange={async (event) => {
-              const checked = event.target.checked
-              setSimulateInput(checked)
-              await toggleSimulation('input', checked)
-            }}
-          />
-          Simulate input
-        </label>
-      </div>
+  <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+    <label>
+      <input
+        type="checkbox"
+        checked={simulateMatrix}
+        onChange={async (event) => {
+          const checked = event.target.checked
+          setSimulateMatrix(checked)
+          await toggleSimulation('matrix', checked)
+        }}
+      />
+      Simulate matrix
+    </label>
+
+    <label>
+      <input
+        type="checkbox"
+        checked={simulateInput}
+        onChange={async (event) => {
+          const checked = event.target.checked
+          setSimulateInput(checked)
+          await toggleSimulation('input', checked)
+        }}
+      />
+      Simulate input
+    </label>
+  </div>
+
 
       <div style={{ marginBottom: '1rem' }}>
         <div style={{ marginBottom: '0.5rem' }}><strong>Gesture:</strong> {selectedGesture}</div>
