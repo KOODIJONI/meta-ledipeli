@@ -24,3 +24,4 @@ recipes-core/game-engine/files/assets/*.bin
 !recipes-core/game-engine/files/assets/screensaver_8.bin
 !recipes-core/game-engine/files/assets/screensaver_9.bin
 !recipes-core/game-engine/files/assets/screensaver_10.bin
+!recipes-core/game-engine/files/assets/draw.bin

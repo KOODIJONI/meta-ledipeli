@@ -63,8 +63,8 @@ function buildRgbMatrixFromBytes(bytes, width = 0, height = 0) {
 
   const pixels = []
   for (let index = 0; index < pixelBytes.length; index += 3) {
-    const g = pixelBytes[index] ?? 0
-    const r = pixelBytes[index + 1] ?? 0
+    const r = pixelBytes[index] ?? 0
+    const g = pixelBytes[index + 1] ?? 0
     const b = pixelBytes[index + 2] ?? 0
     pixels.push({ r, g, b })
   }
@@ -371,8 +371,8 @@ function GameSimulator() {
 
     try {
       await rpcClient.publish(MOUSE_EVENT_TOPIC, {
-        x: 0,
-        y: 0,
+        x: cameraX,
+        y: cameraY,
         gesture,
       })
       return

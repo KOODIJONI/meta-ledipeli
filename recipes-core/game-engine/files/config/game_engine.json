@@ -12,7 +12,7 @@
     },
     "startup": {
         "initial_game": "test_game",
-        "available_games": ["test_game","tetris", "pong", "touch", "breakout"]  
+        "available_games": ["test_game","animations","space_invaders", "draw"]  
     },
 
     "tetris": {
